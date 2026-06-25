@@ -1,6 +1,3 @@
-/* ============================================================
-   LENIS
-   ============================================================ */
 html.lenis,
 html.lenis body {
   height: auto;
@@ -11,10 +8,6 @@ html.lenis body {
 .lenis.lenis-stopped {
   overflow: hidden;
 }
-
-/* ============================================================
-   GLOBAL
-   ============================================================ */
 a {
   color: currentcolor;
 }
@@ -27,10 +20,6 @@ a {
   transform: scale(0.75);
   transform-origin: left center;
 }
-
-/* ============================================================
-   THEME — PRODUCT BANNERS
-   ============================================================ */
 .product-card_banner.dark {
   display: none !important;
 }
@@ -46,10 +35,6 @@ body:not(.theme-light) .product-card_banner:not(.dark) {
 .theme-light .product-card_banner:not(.dark) {
   display: block !important;
 }
-
-/* ============================================================
-   PAGE TRANSITION
-   ============================================================ */
 #page-transition {
   position: fixed;
   top: 0;
