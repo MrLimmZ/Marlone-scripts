@@ -1,0 +1,63 @@
+/* ============================================================
+   LENIS
+   ============================================================ */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* ============================================================
+   GLOBAL
+   ============================================================ */
+a {
+  color: currentcolor;
+}
+:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.search-field {
+  font-size: 16px;
+  transform: scale(0.75);
+  transform-origin: left center;
+}
+
+/* ============================================================
+   THEME — PRODUCT BANNERS
+   ============================================================ */
+.product-card_banner.dark {
+  display: none !important;
+}
+body:not(.theme-light) .product-card_banner.dark {
+  display: block !important;
+}
+body:not(.theme-light) .product-card_banner:not(.dark) {
+  display: none !important;
+}
+.theme-light .product-card_banner.dark {
+  display: none !important;
+}
+.theme-light .product-card_banner:not(.dark) {
+  display: block !important;
+}
+
+/* ============================================================
+   PAGE TRANSITION
+   ============================================================ */
+#page-transition {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 99999;
+  background: var(--_theme---background-secondary, #000);
+  transform: translateY(0);
+  pointer-events: none;
+}
