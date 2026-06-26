@@ -45,4 +45,11 @@ body:not(.theme-light) .product-card_banner:not(.dark) {
   background: var(--_theme---background-secondary, #000);
   transform: translateY(0);
   pointer-events: none;
+  display: flex !important;
+}
+
+.nav[data-wf--navigation--variant="light"].scrolled .menu-toggle-mobile,
+.nav[data-wf--navigation--variant="light"].scrolled .favorites-toggle-mobile,
+.nav[data-wf--navigation--variant="light"].scrolled .search-toggle-mobile {
+  color: var(--_theme---text-color) !important;
 }
