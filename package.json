@@ -4,7 +4,7 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "dev": "chokidar 'src/*.js' -c 'cat src/core.js src/lightbox.js src/reveal.js src/transition.js > main.js' --initial & serve . -p 3000",
+    "dev": "chokidar 'src/*.js' -c 'cat src/core.js src/lightbox.js src/reveal.js src/transition.js > main.js' --initial & vite --port 3000",
     "deploy": "cat src/core.js src/lightbox.js src/reveal.js src/transition.js > main.js && git add . && git commit -m 'update' && git push && node purge.js"
   },
   "repository": {
@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/MrLimmZ/Marlone-scripts#readme",
   "devDependencies": {
-    "chokidar-cli": "^3.0.0"
+    "chokidar-cli": "^3.0.0",
+    "vite": "^8.1.5"
   }
 }

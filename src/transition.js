@@ -129,13 +129,19 @@
     playExit(href);
   });
 
-  document.addEventListener('DOMContentLoaded', () => {
+  function initTransitionEnter() {
     const navEntry = performance.getEntriesByType('navigation')[0];
     const isReload = navEntry && navEntry.type === 'reload';
     const isFirstLoad = !sessionStorage.getItem('visited') || isReload;
     sessionStorage.setItem('visited', '1');
     playEnter(isFirstLoad);
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTransitionEnter);
+  } else {
+    initTransitionEnter();
+  }
 
   window.addEventListener('pageshow', function (e) {
     if (e.persisted) playEnter(false);

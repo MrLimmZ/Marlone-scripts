@@ -624,7 +624,7 @@ function initProductCardHover() {
   });
 }
 
-document.addEventListener("DOMContentLoaded", function () {
+function initAll() {
   initCookies();
   initEscapeKey();
   initLenis();
@@ -656,8 +656,13 @@ document.addEventListener("DOMContentLoaded", function () {
   document.querySelectorAll("video[autoplay]").forEach(function (video) {
     videoObserver.observe(video);
   });
-});
-function initLightbox() {
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initAll);
+} else {
+  initAll();
+}function initLightbox() {
   const allImgs = document.querySelectorAll('img[data-lightbox]');
   if (!allImgs.length) return;
   if (document.getElementById('slide-lightbox')) return;
@@ -1814,13 +1819,19 @@ function initLightbox() {
     playExit(href);
   });
 
-  document.addEventListener('DOMContentLoaded', () => {
+  function initTransitionEnter() {
     const navEntry = performance.getEntriesByType('navigation')[0];
     const isReload = navEntry && navEntry.type === 'reload';
     const isFirstLoad = !sessionStorage.getItem('visited') || isReload;
     sessionStorage.setItem('visited', '1');
     playEnter(isFirstLoad);
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTransitionEnter);
+  } else {
+    initTransitionEnter();
+  }
 
   window.addEventListener('pageshow', function (e) {
     if (e.persisted) playEnter(false);

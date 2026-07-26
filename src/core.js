@@ -624,7 +624,7 @@ function initProductCardHover() {
   });
 }
 
-document.addEventListener("DOMContentLoaded", function () {
+function initAll() {
   initCookies();
   initEscapeKey();
   initLenis();
@@ -656,4 +656,10 @@ document.addEventListener("DOMContentLoaded", function () {
   document.querySelectorAll("video[autoplay]").forEach(function (video) {
     videoObserver.observe(video);
   });
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initAll);
+} else {
+  initAll();
+}
