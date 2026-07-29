@@ -58,14 +58,24 @@ function applyBannerTheme(isLight) {
     });
 }
 
+function getSystemTheme() {
+  const prefersLight = window.matchMedia(
+    "(prefers-color-scheme: light)",
+  ).matches;
+  return prefersLight ? "On" : "Off";
+}
+
 function initThemeSwitch(scope = document) {
   function applyTheme(value) {
     document.body.classList.toggle("theme-light", value === "On");
-    localStorage.setItem(THEME_KEY, value);
+    document.documentElement.classList.toggle("theme-light", value === "On");
+    sessionStorage.setItem(THEME_KEY, value);
     applyBannerTheme(value === "On");
   }
-  const savedTheme = localStorage.getItem(THEME_KEY);
-  if (savedTheme) applyTheme(savedTheme);
+
+  const savedTheme = sessionStorage.getItem(THEME_KEY) || getSystemTheme();
+  applyTheme(savedTheme);
+
   scope.querySelectorAll('[data-switch="switch-theme"]').forEach((switchEl) => {
     const options = switchEl.querySelectorAll(
       ".switch-option[data-switch-value]",
@@ -84,14 +94,12 @@ function initThemeSwitch(scope = document) {
         });
       });
     });
-    if (savedTheme) {
-      options.forEach((opt) => {
-        opt.classList.toggle(
-          "is-active",
-          opt.getAttribute("data-switch-value") === savedTheme,
-        );
-      });
-    }
+    options.forEach((opt) => {
+      opt.classList.toggle(
+        "is-active",
+        opt.getAttribute("data-switch-value") === savedTheme,
+      );
+    });
   });
 }
 
@@ -341,6 +349,16 @@ function initLenis() {
   }, 300);
 }
 
+function dedupeImgsBySrc(imgs) {
+  const seen = new Set();
+  return imgs.filter((img) => {
+    const key = img.currentSrc || img.src;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function getLightboxImgs(group) {
   if (group) {
     const themedImgs = document.querySelectorAll(
@@ -350,14 +368,17 @@ function getLightboxImgs(group) {
       const currentTheme = document.body.classList.contains("theme-light")
         ? "light"
         : "dark";
-      return Array.from(themedImgs).filter(
+      const filtered = Array.from(themedImgs).filter(
         (img) => img.dataset.lightboxTheme === currentTheme,
+      );
+      return dedupeImgsBySrc(
+        filtered.length ? filtered : Array.from(themedImgs),
       );
     }
     const staticImgs = document.querySelectorAll(
       `img[data-lightbox][data-lightbox-group="${group}"]`,
     );
-    if (staticImgs.length) return Array.from(staticImgs);
+    if (staticImgs.length) return dedupeImgsBySrc(Array.from(staticImgs));
     return [];
   }
   const themedImgs = document.querySelectorAll(
@@ -367,18 +388,19 @@ function getLightboxImgs(group) {
     const currentTheme = document.body.classList.contains("theme-light")
       ? "light"
       : "dark";
-    return Array.from(themedImgs).filter(
+    const filtered = Array.from(themedImgs).filter(
       (img) => img.dataset.lightboxTheme === currentTheme,
     );
+    return dedupeImgsBySrc(filtered.length ? filtered : Array.from(themedImgs));
   }
   const containers = document.querySelectorAll("[data-lightbox]:not(img)");
   if (containers.length) {
-    return Array.from(
-      document.querySelectorAll("[data-lightbox]:not(img) img"),
+    return dedupeImgsBySrc(
+      Array.from(document.querySelectorAll("[data-lightbox]:not(img) img")),
     );
   }
   const staticImgs = document.querySelectorAll("img[data-lightbox]");
-  if (staticImgs.length) return Array.from(staticImgs);
+  if (staticImgs.length) return dedupeImgsBySrc(Array.from(staticImgs));
   return [];
 }
 
@@ -574,6 +596,9 @@ function initPageFeatures(scope = document) {
 }
 
 function initProductCardHover() {
+  const noHover = window.matchMedia("(hover: none), (pointer: coarse)").matches;
+  if (noHover) return;
+
   document.querySelectorAll(".product-link").forEach((card) => {
     const header = card.querySelector(".product-card-header");
     const subtitle = card.querySelector(".product-card-subtitle");
@@ -635,8 +660,8 @@ function initAll() {
   initNavScrolled();
   initProductCardHover();
 
-  const savedTheme = localStorage.getItem(THEME_KEY);
-  if (savedTheme) applyBannerTheme(savedTheme === "On");
+  const currentTheme = sessionStorage.getItem(THEME_KEY) || getSystemTheme();
+  applyBannerTheme(currentTheme === "On");
 
   initImageReveal();
 

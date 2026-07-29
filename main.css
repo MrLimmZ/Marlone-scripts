@@ -53,3 +53,30 @@ body:not(.theme-light) .product-card_banner:not(.dark) {
 .nav[data-wf--navigation--variant="light"].scrolled .search-toggle-mobile {
   color: var(--_theme---text-color) !important;
 }
+
+body,
+body *,
+svg,
+svg * {
+  transition-property: background-color, color, border-color, fill, stroke;
+  transition-duration: 0.4s;
+  transition-timing-function: ease;
+}
+
+.footer.is-ready {
+  transition-property: transform, background-color, color, border-color, fill, stroke;
+  transition-duration: 1s, 0.4s, 0.4s, 0.4s, 0.4s, 0.4s;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1), ease, ease, ease, ease, ease;
+}
+
+@media (max-width: 991px) {
+  .footer {
+    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease,
+      fill 0.4s ease, stroke 0.4s ease !important;
+  }
+}
+
+.nav,
+.nav * {
+  transition-property: none;
+}

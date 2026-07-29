@@ -1,4 +1,6 @@
 (function () {
+  const REVEAL_CLIP_PATH = 'inset(-20% -10% -10% -10%)';
+
   function setupTextReveal() {
     const targets = document.querySelectorAll('[data-text-reveal]');
 
@@ -10,7 +12,7 @@
       const isInline = computedDisplay === 'inline' || computedDisplay === 'inline-block';
 
       const wrapper = document.createElement('div');
-      wrapper.style.cssText = `display: ${isInline ? 'inline-block' : 'block'}; clip-path: inset(-20% 0 0 0);`;
+      wrapper.style.cssText = `display: ${isInline ? 'inline-block' : 'block'}; clip-path: ${REVEAL_CLIP_PATH};`;
 
       el.parentNode.insertBefore(wrapper, el);
       wrapper.appendChild(el);
@@ -25,6 +27,8 @@
     svgs.forEach((svg) => {
       if (svg.dataset.logoRevealInit === 'true') return;
       svg.dataset.logoRevealInit = 'true';
+
+      svg.style.overflow = 'visible';
 
       const paths = Array.from(svg.querySelectorAll('path'));
       if (!paths.length) return;
@@ -47,19 +51,28 @@
   function startTextReveal() {
     document.querySelectorAll('[data-text-reveal]').forEach((el) => {
       const wrapper = el.parentNode;
+      const shouldRepeat = el.hasAttribute('data-text-repeat');
 
       const observer = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
-            if (!entry.isIntersecting) return;
-            observer.unobserve(wrapper);
-            gsap.to(el, {
-              y: '0%',
-              opacity: 1,
-              duration: 0.8,
-              ease: 'power3.out',
-              delay: parseFloat(el.dataset.textRevealDelay || 0),
-            });
+            if (entry.isIntersecting) {
+              wrapper.style.clipPath = REVEAL_CLIP_PATH;
+              gsap.to(el, {
+                y: '0%',
+                opacity: 1,
+                duration: 0.8,
+                ease: 'power3.out',
+                delay: parseFloat(el.dataset.textRevealDelay || 0),
+                onComplete: () => {
+                  wrapper.style.clipPath = 'none';
+                },
+              });
+              if (!shouldRepeat) observer.unobserve(wrapper);
+            } else if (shouldRepeat) {
+              wrapper.style.clipPath = REVEAL_CLIP_PATH;
+              gsap.set(el, { y: '110%', opacity: 0 });
+            }
           });
         },
         { threshold: 0.1 },
@@ -109,7 +122,6 @@
     }, 50);
   }
 
-  // Étape 1 : setup (cacher) dès que possible
   function setup() {
     waitForGsap(() => {
       setupTextReveal();
@@ -117,7 +129,6 @@
     });
   }
 
-  // Étape 2 : lancer les animations après la transition
   let animStarted = false;
 
   function startAnimations() {
@@ -127,16 +138,13 @@
     startLogoReveal();
   }
 
-  // Setup le plus tôt possible
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setup);
   } else {
     setup();
   }
 
-  // Lancer les anims seulement quand la transition est finie
   window.addEventListener('transition:done', startAnimations);
 
-  // Fallback si transition.js ne fire pas
   setTimeout(startAnimations, 2500);
 })();
