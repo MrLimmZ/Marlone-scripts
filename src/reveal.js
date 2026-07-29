@@ -66,6 +66,13 @@
                 delay: parseFloat(el.dataset.textRevealDelay || 0),
                 onComplete: () => {
                   wrapper.style.clipPath = 'none';
+
+                  // Fix hover bloqué : on ne nettoie les styles inline
+                  // que si l'élément n'est pas en mode "repeat"
+                  // (sinon on casse l'animation de sortie/réapparition au scroll)
+                  if (!shouldRepeat) {
+                    gsap.set(el, { clearProps: 'opacity,transform' });
+                  }
                 },
               });
               if (!shouldRepeat) observer.unobserve(wrapper);
@@ -99,6 +106,9 @@
               ease: 'power3.out',
               stagger: 0.06,
               delay: parseFloat(svg.dataset.logoRevealDelay || 0),
+              onComplete: () => {
+                gsap.set(groups, { clearProps: 'opacity,transform' });
+              },
             });
           });
         },

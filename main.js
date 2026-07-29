@@ -1,4 +1,5 @@
 const THEME_KEY = "site_theme";
+const THEME_MANUAL_KEY = "site_theme_manual";
 let escapeKeyBound = false;
 let snapWheelHandler = null;
 let projectSnapWheelHandler = null;
@@ -65,6 +66,17 @@ function getSystemTheme() {
   return prefersLight ? "On" : "Off";
 }
 
+// Détermine le thème à appliquer selon la même règle que le bootstrap du <head> :
+// - si l'utilisateur a fait un choix manuel cette session (switch cliqué), on le respecte
+// - sinon on suit toujours le système en direct, même si une ancienne valeur
+//   automatique traîne dans sessionStorage (elle peut être obsolète)
+function resolveTheme() {
+  const manual = sessionStorage.getItem(THEME_MANUAL_KEY) === "1";
+  const stored = sessionStorage.getItem(THEME_KEY);
+  if (manual && stored) return stored;
+  return getSystemTheme();
+}
+
 function initThemeSwitch(scope = document) {
   function applyTheme(value) {
     document.body.classList.toggle("theme-light", value === "On");
@@ -73,7 +85,7 @@ function initThemeSwitch(scope = document) {
     applyBannerTheme(value === "On");
   }
 
-  const savedTheme = sessionStorage.getItem(THEME_KEY) || getSystemTheme();
+  const savedTheme = resolveTheme();
   applyTheme(savedTheme);
 
   scope.querySelectorAll('[data-switch="switch-theme"]').forEach((switchEl) => {
@@ -85,6 +97,7 @@ function initThemeSwitch(scope = document) {
       option.dataset.themeInit = "true";
       option.addEventListener("click", () => {
         const value = option.getAttribute("data-switch-value");
+        sessionStorage.setItem(THEME_MANUAL_KEY, "1"); // choix explicite : ne suit plus le système
         applyTheme(value);
         options.forEach((opt) => {
           opt.classList.toggle(
@@ -101,6 +114,28 @@ function initThemeSwitch(scope = document) {
       );
     });
   });
+
+  // Réagit en direct si l'utilisateur change le thème de son OS pendant sa
+  // navigation — uniquement tant qu'il n'a pas fait de choix manuel cette session.
+  if (!initThemeSwitch._liveListenerBound) {
+    initThemeSwitch._liveListenerBound = true;
+    const mql = window.matchMedia("(prefers-color-scheme: light)");
+    mql.addEventListener("change", (e) => {
+      if (sessionStorage.getItem(THEME_MANUAL_KEY) === "1") return;
+
+      const value = e.matches ? "On" : "Off";
+      applyTheme(value);
+
+      document
+        .querySelectorAll('[data-switch="switch-theme"] .switch-option[data-switch-value]')
+        .forEach((opt) => {
+          opt.classList.toggle(
+            "is-active",
+            opt.getAttribute("data-switch-value") === value,
+          );
+        });
+    });
+  }
 }
 
 function initEscapeKey() {
@@ -660,7 +695,7 @@ function initAll() {
   initNavScrolled();
   initProductCardHover();
 
-  const currentTheme = sessionStorage.getItem(THEME_KEY) || getSystemTheme();
+  const currentTheme = resolveTheme();
   applyBannerTheme(currentTheme === "On");
 
   initImageReveal();
@@ -687,8 +722,7 @@ if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initAll);
 } else {
   initAll();
-}
-function initLightbox() {
+}function initLightbox() {
   const allImgs = document.querySelectorAll("img[data-lightbox]");
   if (!allImgs.length) return;
   if (document.getElementById("slide-lightbox")) return;
@@ -1691,6 +1725,13 @@ function initLightbox() {
                 delay: parseFloat(el.dataset.textRevealDelay || 0),
                 onComplete: () => {
                   wrapper.style.clipPath = 'none';
+
+                  // Fix hover bloqué : on ne nettoie les styles inline
+                  // que si l'élément n'est pas en mode "repeat"
+                  // (sinon on casse l'animation de sortie/réapparition au scroll)
+                  if (!shouldRepeat) {
+                    gsap.set(el, { clearProps: 'opacity,transform' });
+                  }
                 },
               });
               if (!shouldRepeat) observer.unobserve(wrapper);
@@ -1724,6 +1765,9 @@ function initLightbox() {
               ease: 'power3.out',
               stagger: 0.06,
               delay: parseFloat(svg.dataset.logoRevealDelay || 0),
+              onComplete: () => {
+                gsap.set(groups, { clearProps: 'opacity,transform' });
+              },
             });
           });
         },
