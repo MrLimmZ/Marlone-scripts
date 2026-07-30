@@ -1,3 +1,62 @@
+// ─── Sélection des images pour la lightbox ─────────────────────────────────
+
+function dedupeImgsBySrc(imgs) {
+  const seen = new Set();
+  return imgs.filter((img) => {
+    const key = img.currentSrc || img.src;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function getLightboxImgs(group) {
+  if (group) {
+    const themedImgs = document.querySelectorAll(
+      `img[data-lightbox][data-lightbox-theme][data-lightbox-group="${group}"]`,
+    );
+    if (themedImgs.length) {
+      const currentTheme = document.body.classList.contains("theme-light")
+        ? "light"
+        : "dark";
+      const filtered = Array.from(themedImgs).filter(
+        (img) => img.dataset.lightboxTheme === currentTheme,
+      );
+      return dedupeImgsBySrc(
+        filtered.length ? filtered : Array.from(themedImgs),
+      );
+    }
+    const staticImgs = document.querySelectorAll(
+      `img[data-lightbox][data-lightbox-group="${group}"]`,
+    );
+    if (staticImgs.length) return dedupeImgsBySrc(Array.from(staticImgs));
+    return [];
+  }
+  const themedImgs = document.querySelectorAll(
+    "img[data-lightbox][data-lightbox-theme]",
+  );
+  if (themedImgs.length) {
+    const currentTheme = document.body.classList.contains("theme-light")
+      ? "light"
+      : "dark";
+    const filtered = Array.from(themedImgs).filter(
+      (img) => img.dataset.lightboxTheme === currentTheme,
+    );
+    return dedupeImgsBySrc(filtered.length ? filtered : Array.from(themedImgs));
+  }
+  const containers = document.querySelectorAll("[data-lightbox]:not(img)");
+  if (containers.length) {
+    return dedupeImgsBySrc(
+      Array.from(document.querySelectorAll("[data-lightbox]:not(img) img")),
+    );
+  }
+  const staticImgs = document.querySelectorAll("img[data-lightbox]");
+  if (staticImgs.length) return dedupeImgsBySrc(Array.from(staticImgs));
+  return [];
+}
+
+// ─── Lightbox ───────────────────────────────────────────────────────────────
+
 function initLightbox() {
   const allImgs = document.querySelectorAll("img[data-lightbox]");
   if (!allImgs.length) return;

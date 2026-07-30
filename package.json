@@ -4,8 +4,8 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "dev": "chokidar 'src/*.js' -c 'cat src/core.js src/lightbox.js src/reveal.js src/transition.js > main.js' --initial & vite --port 3000",
-    "deploy": "cat src/core.js src/lightbox.js src/reveal.js > main.js && git add . && git commit -m 'update' && git push && node purge.js"
+    "dev": "chokidar 'src/*.js' -c 'cat src/theme.js src/modals.js src/scroll.js src/nav.js src/cookies.js src/product-hover.js src/core.js src/lightbox.js src/reveal.js src/barba.js src/footer.js src/fixed-section-snap.js > main.js && terser main.js -o main.js -c -m' --initial & vite --port 3000",
+    "deploy": "cat src/theme.js src/modals.js src/scroll.js src/nav.js src/cookies.js src/product-hover.js src/core.js src/lightbox.js src/reveal.js src/barba.js src/footer.js src/fixed-section-snap.js > main.js && terser main.js -o main.js -c -m && git add . && git commit -m 'update' && git push && node purge.js"
   },
   "repository": {
     "type": "git",
@@ -19,7 +19,10 @@
   },
   "homepage": "https://github.com/MrLimmZ/Marlone-scripts#readme",
   "devDependencies": {
-    "chokidar-cli": "^3.0.0",
+    "esbuild": "^0.28.1",
     "vite": "^8.1.5"
+  },
+  "dependencies": {
+    "terser": "^5.49.0"
   }
 }

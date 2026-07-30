@@ -1,3 +1,121 @@
+function getDominantColor(src, cb) {
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.onload = function () {
+    try {
+      const canvas = document.createElement("canvas");
+      const SIZE = 10;
+      canvas.width = SIZE;
+      canvas.height = SIZE;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, SIZE, SIZE);
+      const data = ctx.getImageData(0, 0, SIZE, SIZE).data;
+      let r = 0,
+        g = 0,
+        b = 0,
+        count = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        r += data[i];
+        g += data[i + 1];
+        b += data[i + 2];
+        count++;
+      }
+      cb(
+        `rgb(${Math.round(r / count)},${Math.round(g / count)},${Math.round(b / count)})`,
+      );
+    } catch (e) {
+      cb(null);
+    }
+  };
+  img.onerror = () => cb(null);
+  img.src = src;
+}
+
+function initImageReveal() {
+  const targets = document.querySelectorAll("img[data-reveal]");
+  const isDark = !document.body.classList.contains("theme-light");
+
+  targets.forEach((img) => {
+    if (img.dataset.revealInit === "true") return;
+    img.dataset.revealInit = "true";
+
+    const styleAtInit = img.getAttribute("style") || "";
+    if (styleAtInit.includes("display: none")) return;
+
+    const wrapper = document.createElement("div");
+    wrapper.style.cssText = `
+      position: relative;
+      overflow: hidden;
+      display: block;
+      width: 100%;
+      transition: transform 600ms ease-in-out;
+    `;
+
+    wrapper.addEventListener("mouseenter", () => {
+      wrapper.style.transform = "scale(1.02)";
+    });
+    wrapper.addEventListener("mouseleave", () => {
+      wrapper.style.transform = "scale(1)";
+    });
+
+    img.parentNode.insertBefore(wrapper, img);
+    wrapper.appendChild(img);
+
+    const bg = document.createElement("div");
+    bg.style.cssText = `
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: ${isDark ? "#1a1a1a" : "#e8e8e8"};
+      transition: opacity 0.6s ease;
+      pointer-events: none;
+    `;
+    wrapper.appendChild(bg);
+
+    img.style.position = "relative";
+    img.style.zIndex = "2";
+    img.style.opacity = "0";
+    img.style.transition = "opacity 0.8s ease";
+    img.style.width = "100%";
+
+    function reveal() {
+      const src = img.currentSrc || img.src;
+      if (!src || src.includes("placeholder")) return;
+      const styleAtReveal = img.getAttribute("style") || "";
+      if (styleAtReveal.includes("display: none")) return;
+      getDominantColor(src, (color) => {
+        if (color) bg.style.background = color;
+        setTimeout(() => {
+          const styleAtFade = img.getAttribute("style") || "";
+          if (styleAtFade.includes("display: none")) return;
+          img.style.opacity = "1";
+        }, 400);
+      });
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          observer.unobserve(img);
+          const styleAtObserve = img.getAttribute("style") || "";
+          if (styleAtObserve.includes("display: none")) return;
+          if (img.complete && img.naturalWidth > 0) {
+            reveal();
+          } else {
+            img.addEventListener("load", reveal, { once: true });
+          }
+        });
+      },
+      { threshold: 0.5 },
+    );
+
+    observer.observe(img);
+  });
+}
+
+// ─── Reveal de texte / logo au scroll (système existant, inchangé) ────────
+
 (function () {
   const REVEAL_CLIP_PATH = 'inset(-20% -10% -10% -10%)';
 

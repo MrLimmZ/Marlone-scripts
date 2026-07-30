@@ -63,6 +63,26 @@ svg * {
   transition-timing-function: ease;
 }
 
+.footer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  overflow-y: auto;
+  z-index: 11;
+  transform: translateY(100%);
+  transition: none;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.footer::-webkit-scrollbar {
+  display: none;
+}
+.footer.is-visible {
+  transform: translateY(0);
+}
+
 .footer.is-ready {
   transition-property: transform, background-color, color, border-color, fill, stroke;
   transition-duration: 1s, 0.4s, 0.4s, 0.4s, 0.4s, 0.4s;
@@ -71,6 +91,10 @@ svg * {
 
 @media (max-width: 991px) {
   .footer {
+    position: static;
+    transform: none !important;
+    height: auto;
+    overflow-y: visible;
     transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease,
       fill 0.4s ease, stroke 0.4s ease !important;
   }
