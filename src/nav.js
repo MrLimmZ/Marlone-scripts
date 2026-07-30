@@ -2,8 +2,7 @@ function initNavScrolled() {
   const nav = document.querySelector(".nav.w-nav");
   if (!nav) return;
 
-  const isLightNav =
-    nav.getAttribute("data-wf--navigation--variant") === "light";
+  const isLightNav = nav.getAttribute("data-nav-theme") === "light";
   if (!isLightNav) return;
 
   const trigger = document.querySelector(".product-section");

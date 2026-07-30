@@ -44,11 +44,45 @@ function initFixedSectionSnap(options) {
     return currentIndex >= 0 ? sections[currentIndex] : null;
   }
 
+  const nestedLenisInstances = new Map();
+
+  function ensureNestedLenis(section) {
+    if (nestedLenisInstances.has(section)) return nestedLenisInstances.get(section);
+    if (typeof Lenis === 'undefined') return null;
+    if (section.scrollHeight <= section.clientHeight + 10) return null; // pas assez de contenu pour justifier un Lenis dédié
+
+    const instance = new Lenis({
+      wrapper: section,
+      content: section.firstElementChild || section,
+      duration: 1.1,
+      smoothWheel: true,
+      autoRaf: true,
+    });
+    nestedLenisInstances.set(section, instance);
+    registerCleanup(() => {
+      instance.destroy();
+      nestedLenisInstances.delete(section);
+    });
+    return instance;
+  }
+
   function proxyFor(section) {
     if (typeof getScrollProxy === 'function') {
       const proxy = getScrollProxy(section);
       if (proxy) return proxy;
     }
+
+    const nested = ensureNestedLenis(section);
+    if (nested) {
+      return {
+        isAtTop: () => nested.scroll <= 10,
+        isAtBottom: () => nested.scroll >= nested.limit - 10,
+        scrollBy: () => {}, // le scroll natif + Lenis imbriqué gèrent déjà ça eux-mêmes
+        reset: () => nested.scrollTo(0, { immediate: true }),
+        nativeScroll: true, // laisse le wheel natif atteindre ce Lenis imbriqué, pas de preventDefault
+      };
+    }
+
     return {
       isAtTop: () => section.scrollTop <= 10,
       isAtBottom: () => section.scrollTop + section.clientHeight >= section.scrollHeight - 50,
@@ -97,9 +131,16 @@ function initFixedSectionSnap(options) {
     const section = sections[next];
     section.classList.add('is-visible');
     proxyFor(section).reset();
+    const wasInFixedMode = currentIndex >= 0;
     currentIndex = next;
     hasReachedBottom = false;
     wheelAccumulator = 0;
+
+    if (!wasInFixedMode) {
+      document.documentElement.classList.add('snap-active');
+      if (window.lenis) window.lenis.stop();
+    }
+
     if (typeof onEnter === 'function') onEnter(currentIndex, section);
     return true;
   }
@@ -112,6 +153,10 @@ function initFixedSectionSnap(options) {
     currentIndex--;
     if (typeof onLeave === 'function') onLeave(leavingIndex, section);
     if (currentIndex < 0) {
+      document.documentElement.classList.remove('snap-active');
+      if (window.lenis && (typeof hasOpenModal !== 'function' || !hasOpenModal()) && !document.body.classList.contains('lightbox-open')) {
+        window.lenis.start();
+      }
       if (typeof onExitToFlow === 'function') {
         onExitToFlow();
       } else {
@@ -142,7 +187,7 @@ function initFixedSectionSnap(options) {
       hasReachedBottom = true;
       return;
     }
-    function check(scroll) {
+    function check() {
       if (currentIndex >= 0) {
         hasReachedBottom = false;
         return;
@@ -152,7 +197,7 @@ function initFixedSectionSnap(options) {
       if (!reached) wheelAccumulator = 0;
     }
     if (window.lenis) {
-      lenisScrollHandler = ({ scroll }) => check(scroll);
+      lenisScrollHandler = () => check();
       window.lenis.on('scroll', lenisScrollHandler);
       registerCleanup(() => {
         if (window.lenis && typeof window.lenis.off === 'function' && lenisScrollHandler) {
@@ -163,7 +208,7 @@ function initFixedSectionSnap(options) {
       const poll = setInterval(() => {
         if (window.lenis) {
           clearInterval(poll);
-          lenisScrollHandler = ({ scroll }) => check(scroll);
+          lenisScrollHandler = () => check();
           window.lenis.on('scroll', lenisScrollHandler);
           registerCleanup(() => {
             if (window.lenis && typeof window.lenis.off === 'function' && lenisScrollHandler) {
@@ -180,9 +225,10 @@ function initFixedSectionSnap(options) {
   function processDelta(e, deltaY, preventFn) {
     if (document.body.classList.contains('lightbox-open')) return;
     if (typeof hasOpenModal === 'function' && hasOpenModal()) return;
-    if (typeof isEligible === 'function' && !isEligible(e)) return;
 
     const inFixedMode = currentIndex >= 0;
+
+    if (!inFixedMode && typeof isEligible === 'function' && !isEligible(e)) return;
 
     if (inFixedMode) {
       if (locked) {
@@ -244,7 +290,11 @@ function initFixedSectionSnap(options) {
   }
 
   const wheelHandler = (e) => {
-    processDelta(e, e.deltaY, () => e.preventDefault());
+    processDelta(e, e.deltaY, () => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+    });
   };
   window.addEventListener('wheel', wheelHandler, { passive: false, capture: true });
   registerCleanup(() => window.removeEventListener('wheel', wheelHandler, { capture: true }));
@@ -266,7 +316,11 @@ function initFixedSectionSnap(options) {
       const deltaY = lastTouchY - y;
       lastTouchY = y;
       if (deltaY === 0) return;
-      processDelta(e, deltaY * 3, () => e.preventDefault());
+      processDelta(e, deltaY * 3, () => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+      });
     };
     const touchEndHandler = () => {
       isTouchTracking = false;

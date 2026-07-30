@@ -6,7 +6,6 @@ function initFooterReveal() {
   if (document.body.dataset.footerManaged === 'true') return;
   const footer = document.querySelector('.footer');
   if (!footer) return;
-  if (window.innerWidth <= 991) return;
 
   const cleanupFns = [];
   function registerCleanup(fn) {
@@ -31,11 +30,17 @@ function initFooterReveal() {
     footer.classList.add('is-visible');
     footer.scrollTop = 0;
     footerVisible = true;
+    document.documentElement.classList.add('snap-active');
+    if (window.lenis) window.lenis.stop();
   }
 
   function hideFooter() {
     footer.classList.remove('is-visible');
     footerVisible = false;
+    document.documentElement.classList.remove('snap-active');
+    if (window.lenis && (typeof hasOpenModal !== 'function' || !hasOpenModal()) && !document.body.classList.contains('lightbox-open')) {
+      window.lenis.start();
+    }
   }
 
   function lock(cb) {
@@ -92,11 +97,13 @@ function initFooterReveal() {
     if (typeof hasOpenModal === 'function' && hasOpenModal()) return;
     if (locked) {
       e.preventDefault();
+      e.stopPropagation();
       return;
     }
 
     if (footerVisible) {
       e.preventDefault();
+      e.stopPropagation();
       if (e.deltaY > 0) {
         if (!isAtBottomOfFooter()) footer.scrollTop += e.deltaY;
       } else {
@@ -112,6 +119,7 @@ function initFooterReveal() {
 
     if (e.deltaY > 0 && isStabilizedAtBottom()) {
       e.preventDefault();
+      e.stopPropagation();
       wheelAccumulator += e.deltaY;
       if (wheelAccumulator >= WHEEL_THRESHOLD) {
         wheelAccumulator = 0;
@@ -172,6 +180,7 @@ function initFooterReveal() {
     });
     cleanupFns.length = 0;
     footer.classList.remove('is-ready', 'is-visible');
+    document.documentElement.classList.remove('snap-active');
     window.__footerRevealCleanup = null;
   };
 }

@@ -1,3 +1,24 @@
+html.resizing,
+html.resizing * {
+  transition: none !important;
+}
+
+html.snap-active {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html.snap-active::-webkit-scrollbar {
+  display: none;
+}
+
+html {
+  overscroll-behavior: none;
+}
+
+body {
+  overscroll-behavior: none;
+}
+
 html.lenis,
 html.lenis body {
   height: auto;
@@ -42,17 +63,51 @@ body:not(.theme-light) .product-card_banner:not(.dark) {
   bottom: 0;
   left: 0;
   z-index: 99999;
-  background: var(--_theme---background-secondary, #000);
+  background-color: var(--_theme---background);
   transform: translateY(0);
-  pointer-events: none;
   display: flex !important;
+  overflow: hidden;
 }
 
-.nav[data-wf--navigation--variant="light"].scrolled .menu-toggle-mobile,
-.nav[data-wf--navigation--variant="light"].scrolled .favorites-toggle-mobile,
-.nav[data-wf--navigation--variant="light"].scrolled .search-toggle-mobile {
+.transition-bg-secondary {
+  position: absolute;
+  inset: 0;
+  background-color: var(--_theme---background-secondary, #000);
+  transform: translateY(0);
+  z-index: 0;
+}
+
+.transition-content {
+  position: relative;
+  z-index: 1;
+}
+
+#page-transition .transition-content > * {
+  opacity: 0;
+  transform: translateY(1.5em);
+}
+
+.nav[data-nav-theme="light"] .menu-toggle-mobile,
+.nav[data-nav-theme="light"] .favorites-toggle-mobile,
+.nav[data-nav-theme="light"] .search-toggle-mobile,
+.nav[data-nav-theme="light"] {
+  color: var(--_colors---white);
+}
+
+.nav[data-nav-theme="light"] .favorites-badge {
+  background-color: var(--_colors---white) !important;
+}
+
+.nav[data-nav-theme="light"].scrolled .menu-toggle-mobile,
+.nav[data-nav-theme="light"].scrolled .favorites-toggle-mobile,
+.nav[data-nav-theme="light"].scrolled .search-toggle-mobile {
   color: var(--_theme---text-color) !important;
 }
+
+.nav[data-nav-theme="light"].scrolled .favorites-badge {
+  background-color: var(--_theme---text-color) !important;
+}
+
 
 body,
 body *,
@@ -68,8 +123,9 @@ svg * {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100vh;
-  overflow-y: auto;
+  height: 100vh !important;
+  height: 100dvh !important;
+  overflow-y: auto !important;
   z-index: 11;
   transform: translateY(100%);
   transition: none;
@@ -89,14 +145,9 @@ svg * {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1), ease, ease, ease, ease, ease;
 }
 
-@media (max-width: 991px) {
+@media (min-width: 992px) {
   .footer {
-    position: static;
-    transform: none !important;
-    height: auto;
-    overflow-y: visible;
-    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease,
-      fill 0.4s ease, stroke 0.4s ease !important;
+    z-index: 99;
   }
 }
 

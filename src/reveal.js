@@ -114,7 +114,7 @@ function initImageReveal() {
   });
 }
 
-// ─── Reveal de texte / logo au scroll (système existant, inchangé) ────────
+// ─── Reveal de texte / logo au scroll ──────────────────────────────────────
 
 (function () {
   const REVEAL_CLIP_PATH = 'inset(-20% -10% -10% -10%)';
@@ -166,8 +166,16 @@ function initImageReveal() {
     });
   }
 
+  // Attache un observer par élément, une seule fois (dataset guard) — sûr
+  // à rappeler à chaque transition Barba : les nouveaux éléments du
+  // container swappé n'ont pas encore ce flag et se font bien attacher un
+  // observer, tandis que les éléments persistants (nav, logo) hors
+  // container ne se retrouvent jamais avec plusieurs observers empilés.
   function startTextReveal() {
     document.querySelectorAll('[data-text-reveal]').forEach((el) => {
+      if (el.dataset.textRevealObserved === 'true') return;
+      el.dataset.textRevealObserved = 'true';
+
       const wrapper = el.parentNode;
       const shouldRepeat = el.hasAttribute('data-text-repeat');
 
@@ -209,6 +217,9 @@ function initImageReveal() {
 
   function startLogoReveal() {
     document.querySelectorAll('[data-logo-reveal]').forEach((svg) => {
+      if (svg.dataset.logoRevealObserved === 'true') return;
+      svg.dataset.logoRevealObserved = 'true';
+
       const groups = svg.querySelectorAll('g');
 
       const observer = new IntersectionObserver(
@@ -257,14 +268,22 @@ function initImageReveal() {
     });
   }
 
-  let animStarted = false;
-
   function startAnimations() {
-    if (animStarted) return;
-    animStarted = true;
-    startTextReveal();
-    startLogoReveal();
+    waitForGsap(() => {
+      startTextReveal();
+      startLogoReveal();
+    });
   }
+
+  // setup() cache les éléments fraîchement insérés dès que possible (évite
+  // le flash) — startAnimations() n'attache les observers de scroll
+  // qu'une fois transition:done reçu, jamais pendant que l'overlay couvre
+  // encore l'écran. Les deux sont rejouables à chaque transition Barba.
+  window.__revealSetup = setup;
+  window.__revealSetupAndStart = function () {
+    setup();
+    startAnimations();
+  };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', setup);
@@ -273,6 +292,4 @@ function initImageReveal() {
   }
 
   window.addEventListener('transition:done', startAnimations);
-
-  setTimeout(startAnimations, 2500);
 })();
