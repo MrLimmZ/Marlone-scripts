@@ -1,3 +1,7 @@
+const BUILD_VERSION = "2026-07-30-1"; // ← à incrémenter à chaque déploiement
+console.log("%c[Marlone] main.js version: " + BUILD_VERSION, "color:#0f0;font-weight:bold;");
+window.__BUILD_VERSION__ = BUILD_VERSION;
+
 // ─── Orchestration ─────────────────────────────────────────────────────────
 
 function initPageFeatures(scope = document) {

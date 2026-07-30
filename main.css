@@ -3,6 +3,10 @@ html.resizing * {
   transition: none !important;
 }
 
+:root {
+  --build-version: "2026-07-30-1"; /* ← à incrémenter à chaque déploiement */
+}
+
 html.snap-active {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -154,4 +158,8 @@ svg * {
 .nav,
 .nav * {
   transition-property: none;
+}
+
+.footer div:nth-child(2) {
+  width: 100%;
 }
