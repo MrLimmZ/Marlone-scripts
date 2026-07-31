@@ -162,6 +162,7 @@ svg * {
 .nav,
 .nav * {
   transition-property: none;
+  z-index: 1000;
 }
 
 #wishlist-list [data-wishlist-link] .image-5 {

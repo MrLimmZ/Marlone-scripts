@@ -31,9 +31,10 @@
       if (!link) return;
       if (link.target === '_blank') return;
       if (link.hasAttribute('data-modal-open') || link.hasAttribute('data-modal-close')) return;
-      // Liens qui gèrent leur propre logique de clic (filtres, tris, etc.)
-      // et ne doivent jamais être interceptés par ce scroll-to-top.
-      if (link.closest('.filters-panel') || link.closest('.filter-slide')) return;
+      // Liens qui gèrent leur propre logique de clic (filtres, tris, modal
+      // cookies...) et ne doivent jamais être interceptés par ce
+      // scroll-to-top.
+      if (link.closest('.filters-panel') || link.closest('.filter-slide') || link.closest('.cookies-overlay')) return;
 
       let url;
       try {
@@ -121,14 +122,6 @@
     });
   }
 
-  // Classe native Webflow ("Component Variants" du Designer, ex:
-  // w-variant-691a7966-...) — indépendante de notre système data-nav-theme,
-  // posée sur la nav ET tous ses descendants (icônes mobile, liens...) par
-  // le HTML brut de CHAQUE page. Comme la nav est persistante (jamais
-  // remplacée par Barba), cette classe reste collée de la page précédente
-  // si on ne la resynchronise pas explicitement — pouvant forcer des
-  // couleurs de la page d'origine (ex: texte blanc) sur la page de
-  // destination, potentiellement invisible sur fond de couleur différente.
   const WF_VARIANT_PATTERN = /^w-variant-[\w-]+$/;
 
   function syncNavVariantClass(nextDoc) {
@@ -191,12 +184,6 @@
     const parser = new DOMParser();
     const nextDoc = parser.parseFromString(nextHtml, 'text/html');
 
-    // Le style DOIT être réinjecté avant le script : un <script> s'exécute
-    // immédiatement dès son insertion dans le DOM, donc si le CSS n'est pas
-    // encore en place, un script qui vérifie du getComputedStyle (ex:
-    // initFixedSectionSnap qui checke position:fixed) verrait l'ancien état
-    // ou aucun style du tout — exactement ce qui cassait la séquence fixe
-    // sur les pages produit après une transition Barba.
     document.querySelectorAll('style[data-page-style]').forEach((el) => el.remove());
 
     nextDoc.querySelectorAll('style[data-page-style]').forEach((oldStyle) => {
@@ -243,8 +230,6 @@
           name: 'default',
 
           async leave(data) {
-            console.log('[BARBA-DEBUG] leave() — de', data.current?.namespace, 'vers', data.next?.namespace, '| window.lenis isStopped:', window.lenis?.isStopped, '| window._snapLocked:', window._snapLocked);
-
             if (typeof window.__modals !== 'undefined' && window.__modals.closeAll) {
               window.__modals.closeAll();
             }
@@ -256,30 +241,21 @@
               await new Promise((resolve) => setTimeout(resolve, 450));
             }
 
-            console.log('[BARBA-DEBUG] leave() — __currentPageCleanup existe:', typeof window.__currentPageCleanup === 'function');
             if (typeof window.__currentPageCleanup === 'function') {
               window.__currentPageCleanup();
             }
 
-            const foundKeys = [];
             for (const k in window) {
               if (k.indexOf('__fixedSectionSnapCleanup_') === 0 && typeof window[k] === 'function') {
-                foundKeys.push(k);
                 window[k]();
               }
             }
-            console.log('[BARBA-DEBUG] leave() — clés __fixedSectionSnapCleanup_* trouvées et nettoyées:', foundKeys);
             window._snapLocked = false;
-            console.log('[BARBA-DEBUG] leave() — fin. window.lenis isStopped:', window.lenis?.isStopped, '| window._snapLocked:', window._snapLocked);
           },
 
           async afterEnter(data) {
-            console.log('[BARBA-DEBUG] afterEnter() début — window.lenis isStopped:', window.lenis?.isStopped, '| window._snapLocked:', window._snapLocked);
-
             reinitWebflow(data);
             reexecuteScripts(data.next.container, data.next.html);
-
-            console.log('[BARBA-DEBUG] afterEnter() après reexecuteScripts (scripts data-page-script relancés) — window.lenis isStopped:', window.lenis?.isStopped);
 
             if (typeof initFooterReveal === 'function') {
               initFooterReveal();

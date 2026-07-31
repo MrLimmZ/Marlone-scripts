@@ -3,7 +3,7 @@ export default {
     host: true,
     cors: true,
     allowedHosts: [
-      'superior-round-soon-eligibility.trycloudflare.com'
+      'seekers-stop-accepting-facilities.trycloudflare.com'
     ]
   }
 }
