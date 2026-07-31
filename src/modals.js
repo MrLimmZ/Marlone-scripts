@@ -19,11 +19,11 @@ function getModalBodyClass(panel, name) {
 }
 
 function getModalDirection(panel) {
-  return panel?.dataset.modalDirection || 'right';
+  return panel?.dataset.modalDirection || "right";
 }
 
 function getAllModalNames() {
-  return Array.from(document.querySelectorAll('[data-modal-panel]')).map(
+  return Array.from(document.querySelectorAll("[data-modal-panel]")).map(
     (el) => el.dataset.modalPanel,
   );
 }
@@ -31,55 +31,59 @@ function getAllModalNames() {
 function openModal(name) {
   const panel = getModalPanel(name);
   if (!panel) return;
-  if (openModalNames.has(name)) return; // déjà ouverte
+  if (openModalNames.has(name)) return;
 
   openModalNames.add(name);
   applyScrollLockState();
 
   const direction = getModalDirection(panel);
   const bodyClass = getModalBodyClass(panel, name);
-  const offscreen = direction === 'left' ? '-100%' : '100%';
+  const offscreen = direction === "left" ? "-100%" : "100%";
 
-  panel.style.display = 'flex';
-  panel.style.transition = 'none';
+  panel.style.display = "flex";
+  panel.style.pointerEvents = "auto";
+  if (typeof window.__freezeModalScroll === "function")
+    window.__freezeModalScroll(panel);
+  panel.style.transition = "none";
   panel.style.transform = `translateX(${offscreen})`;
   panel.offsetHeight; // force reflow
 
   panel.style.transition = `transform ${OPEN_PANEL_DURATION}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
-  panel.style.transform = 'translateX(0%)';
+  panel.style.transform = "translateX(0%)";
 
   const overlay = getModalOverlay(panel);
   if (overlay) {
-    overlay.style.pointerEvents = 'auto';
-    overlay.style.display = 'block';
-    overlay.style.transition = 'none';
-    overlay.style.opacity = '0';
+    overlay.style.pointerEvents = "auto";
+    overlay.style.display = "block";
+    overlay.style.transition = "none";
+    overlay.style.opacity = "0";
     overlay.offsetHeight;
     overlay.style.transition = `opacity ${OPEN_OVERLAY_DURATION}ms cubic-bezier(0.32, 0, 0.67, 0)`;
-    overlay.style.opacity = '1';
+    overlay.style.opacity = "1";
   }
 
-  // La classe body n'est ajoutée qu'à la toute fin de l'animation d'ouverture
-  // (comme le faisait Webflow) — sinon un clic "en dehors du panneau" sur le
-  // bouton d'ouverture lui-même refermerait instantanément la modal qu'on
-  // vient d'ouvrir, puisque ce bouton est toujours hors du panneau.
   setTimeout(() => {
-    if (!openModalNames.has(name)) return; // refermée entre-temps
+    if (!openModalNames.has(name)) return;
     document.body.classList.add(bodyClass);
+    if (typeof window.__unfreezeModalScroll === "function")
+      window.__unfreezeModalScroll(panel);
   }, OPEN_PANEL_DURATION);
 }
 
 function closeModal(name) {
   const panel = getModalPanel(name);
   if (!panel) return;
-  if (!openModalNames.has(name)) return; // déjà fermée
+  if (!openModalNames.has(name)) return;
 
   openModalNames.delete(name);
   applyScrollLockState();
 
   const direction = getModalDirection(panel);
   const bodyClass = getModalBodyClass(panel, name);
-  const offscreen = direction === 'left' ? '-100%' : '100%';
+  const offscreen = direction === "left" ? "-100%" : "100%";
+
+  if (typeof window.__freezeModalScroll === "function")
+    window.__freezeModalScroll(panel);
 
   panel.style.transition = `transform ${CLOSE_DURATION}ms cubic-bezier(0.445, 0.05, 0.55, 0.95)`;
   panel.style.transform = `translateX(${offscreen})`;
@@ -87,14 +91,15 @@ function closeModal(name) {
   const overlay = getModalOverlay(panel);
   if (overlay) {
     overlay.style.transition = `opacity ${CLOSE_DURATION}ms ease-in`;
-    overlay.style.opacity = '0';
-    overlay.style.pointerEvents = 'none';
+    overlay.style.opacity = "0";
+    overlay.style.pointerEvents = "none";
   }
 
   setTimeout(() => {
-    if (openModalNames.has(name)) return; // rouverte entre-temps
-    panel.style.display = 'none';
-    if (overlay) overlay.style.display = 'none';
+    if (openModalNames.has(name)) return;
+    panel.style.display = "none";
+    panel.style.pointerEvents = "";
+    if (overlay) overlay.style.display = "none";
     document.body.classList.remove(bodyClass);
   }, CLOSE_DURATION);
 }
@@ -105,7 +110,6 @@ function closeAllModals() {
   });
 }
 
-// Exposé pour Barba (fermer avant transition), et pour tout autre usage.
 window.__modals = {
   open: openModal,
   close: closeModal,
@@ -114,28 +118,27 @@ window.__modals = {
 };
 
 function bindModalTriggers(scope = document) {
-  scope.querySelectorAll('[data-modal-open]').forEach((btn) => {
-    if (btn.dataset.modalOpenInit === 'true') return;
-    btn.dataset.modalOpenInit = 'true';
-    btn.addEventListener('click', (e) => {
+  scope.querySelectorAll("[data-modal-open]").forEach((btn) => {
+    if (btn.dataset.modalOpenInit === "true") return;
+    btn.dataset.modalOpenInit = "true";
+    btn.addEventListener("click", (e) => {
       e.preventDefault();
-      openModal(btn.getAttribute('data-modal-open'));
+      openModal(btn.getAttribute("data-modal-open"));
     });
   });
 
-  scope.querySelectorAll('[data-modal-close]').forEach((btn) => {
-    if (btn.dataset.modalCloseInit === 'true') return;
-    btn.dataset.modalCloseInit = 'true';
-    btn.addEventListener('click', (e) => {
+  scope.querySelectorAll("[data-modal-close]").forEach((btn) => {
+    if (btn.dataset.modalCloseInit === "true") return;
+    btn.dataset.modalCloseInit = "true";
+    btn.addEventListener("click", (e) => {
       e.preventDefault();
-      closeModal(btn.getAttribute('data-modal-close'));
+      closeModal(btn.getAttribute("data-modal-close"));
     });
   });
 }
 
-// Clic en dehors du panneau (y compris sur l'overlay) = fermeture.
 function initOutsideClickClose() {
-  document.addEventListener('click', (e) => {
+  document.addEventListener("click", (e) => {
     getAllModalNames().forEach((name) => {
       const panel = getModalPanel(name);
       if (!panel) return;
@@ -147,56 +150,47 @@ function initOutsideClickClose() {
   });
 }
 
-// ─── hasOpenModal — basé sur l'état réel (immédiat), pas sur la classe body
-// qui n'apparaît qu'à la fin de l'animation d'ouverture.
 function hasOpenModal() {
   return openModalNames.size > 0;
 }
 
-// ─── Escape — ferme n'importe quelle modal actuellement ouverte, quelle
-// qu'elle soit (générique, pas besoin de connaître son nom à l'avance).
 function initEscapeKey() {
   if (initEscapeKey._bound) return;
   initEscapeKey._bound = true;
-  document.addEventListener('keydown', function (event) {
-    if (event.key !== 'Escape' && event.key !== 'ArrowRight') return;
-    const lightbox = document.getElementById('slide-lightbox');
-    if (lightbox && lightbox.classList.contains('open')) return;
-    if (event.key === 'Escape') closeAllModals();
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Escape" && event.key !== "ArrowRight") return;
+    const lightbox = document.getElementById("slide-lightbox");
+    if (lightbox && lightbox.classList.contains("open")) return;
+    if (event.key === "Escape") closeAllModals();
   });
 }
 
-// ─── Verrouillage du scroll — basé sur l'état RÉEL (openModalNames), pas sur
-// la classe body qui n'apparaît qu'à la fin de l'animation d'ouverture. Le
-// blocage doit être immédiat au clic, pas seulement une fois l'animation
-// terminée.
 function applyScrollLockState() {
   if (!window.lenis) return;
-  const isOpen = openModalNames.size > 0 || document.body.classList.contains('lightbox-open');
+  const isOpen =
+    openModalNames.size > 0 ||
+    document.body.classList.contains("lightbox-open");
   if (isOpen) {
     window.lenis.stop();
   } else {
     window.lenis.start();
   }
-  const pageContent = document.querySelectorAll('main, .footer, .nav-bar, .page-container');
+  const pageContent = document.querySelectorAll(
+    "main, .footer, .nav-bar, .page-container",
+  );
   pageContent.forEach((el) => {
-    el.style.pointerEvents = isOpen ? 'none' : 'auto';
-    el.style.userSelect = isOpen ? 'none' : 'auto';
+    el.style.pointerEvents = isOpen ? "none" : "auto";
+    el.style.userSelect = isOpen ? "none" : "auto";
   });
 }
 
 function initModalScrollLock() {
-  // L'observer réagit toujours aux changements de classe body — utile pour
-  // "lightbox-open" (qui reste purement class-driven, sans délai), et sert
-  // de filet de sécurité générique. Le verrouillage lié aux modals, lui,
-  // est déclenché immédiatement dans openModal()/closeModal() ci-dessus,
-  // sans attendre ce MutationObserver.
   const observer = new MutationObserver(() => {
     applyScrollLockState();
   });
   observer.observe(document.body, {
     attributes: true,
-    attributeFilter: ['class'],
+    attributeFilter: ["class"],
   });
 }
 
@@ -204,12 +198,52 @@ function initModals(scope = document) {
   bindModalTriggers(scope);
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
+function initMenuCloseOnNavigate() {
+  document.addEventListener(
+    "click",
+    function (e) {
+      const link = e.target.closest(".menu-link");
+      if (!link) return;
+
+      e.preventDefault();
+      e.stopImmediatePropagation();
+
+      const href = link.getAttribute("href");
+
+      if (
+        typeof window.__modals?.close !== "function" ||
+        !window.__modals.isOpen("menu")
+      ) {
+        if (typeof barba !== "undefined") {
+          barba.go(href);
+        } else {
+          window.location.href = href;
+        }
+        return;
+      }
+
+      window.__modals.close("menu");
+
+      setTimeout(() => {
+        if (typeof barba !== "undefined") {
+          barba.go(href);
+        } else {
+          window.location.href = href;
+        }
+      }, CLOSE_DURATION);
+    },
+    true,
+  );
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
     initModals(document);
     initOutsideClickClose();
+    initMenuCloseOnNavigate();
   });
 } else {
   initModals(document);
   initOutsideClickClose();
+  initMenuCloseOnNavigate();
 }

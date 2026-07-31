@@ -85,8 +85,6 @@ function initThemeSwitch(scope = document) {
     });
   });
 
-  // Réagit en direct si l'utilisateur change le thème de son OS pendant sa
-  // navigation — uniquement tant qu'il n'a pas fait de choix manuel cette session.
   if (!initThemeSwitch._liveListenerBound) {
     initThemeSwitch._liveListenerBound = true;
     const mql = window.matchMedia("(prefers-color-scheme: light)");

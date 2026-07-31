@@ -1,8 +1,64 @@
-const BUILD_VERSION = "2026-07-30-1"; // ← à incrémenter à chaque déploiement
-console.log("%c[Marlone] main.js version: " + BUILD_VERSION, "color:#0f0;font-weight:bold;");
+const BUILD_VERSION = "2026-07-31";
+console.log("%c[Marlone] main.js version: " + BUILD_VERSION);
 window.__BUILD_VERSION__ = BUILD_VERSION;
 
-// ─── Orchestration ─────────────────────────────────────────────────────────
+window.__nestedLenisRegistry = new Map();
+
+window.__initNestedLenis = function (selectorOrEl) {
+  const elements = typeof selectorOrEl === "string" ? Array.from(document.querySelectorAll(selectorOrEl)) : [selectorOrEl];
+  const instances = [];
+
+  elements.forEach((wrapper) => {
+    if (!wrapper || wrapper.dataset.lenisInit === "true") return;
+    if (typeof Lenis === "undefined") return;
+    wrapper.dataset.lenisInit = "true";
+
+    const content = document.createElement("div");
+    while (wrapper.firstChild) {
+      content.appendChild(wrapper.firstChild);
+    }
+    wrapper.appendChild(content);
+
+    const instance = new Lenis({
+      wrapper: wrapper,
+      content: content,
+      duration: 1.1,
+      smoothWheel: true,
+      syncTouch: true,
+      autoRaf: true,
+    });
+    window.__nestedLenisRegistry.set(wrapper, instance);
+    instances.push(instance);
+  });
+
+  return instances;
+};
+
+window.__freezeModalScroll = function (panel) {
+  if (!panel) return;
+  panel.querySelectorAll("[data-modal-scroll]").forEach((wrapper) => {
+    const instance = window.__nestedLenisRegistry.get(wrapper);
+    if (instance) instance.stop();
+  });
+};
+
+window.__unfreezeModalScroll = function (panel) {
+  if (!panel) return;
+  panel.querySelectorAll("[data-modal-scroll]").forEach((wrapper) => {
+    const instance = window.__nestedLenisRegistry.get(wrapper);
+    if (instance) instance.start();
+  });
+};
+
+function initModalScrollLenis() {
+  if (typeof window.__initNestedLenis !== "function") return;
+  if (typeof Lenis === "undefined") {
+    setTimeout(initModalScrollLenis, 50);
+    return;
+  }
+  window.__initNestedLenis("[data-modal-scroll]");
+}
+window.__initModalScrollLenis = initModalScrollLenis;
 
 function initPageFeatures(scope = document) {
   initThemeSwitch(scope);
@@ -19,6 +75,7 @@ function initAll() {
   initNavScrolled();
   initProductCardHover();
   initFooterReveal();
+  initModalScrollLenis();
 
   const currentTheme = resolveTheme();
   applyBannerTheme(currentTheme === "On");

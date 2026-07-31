@@ -1,5 +1,9 @@
 export default {
   server: {
-    cors: true
+    host: true,
+    cors: true,
+    allowedHosts: [
+      'superior-round-soon-eligibility.trycloudflare.com'
+    ]
   }
 }

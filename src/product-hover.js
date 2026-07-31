@@ -3,6 +3,16 @@ function initProductCardHover() {
   if (noHover) return;
 
   document.querySelectorAll(".product-link").forEach((card) => {
+    // Empêche de jamais toucher le template statique caché dans la modal
+    // favoris (l'item "Lorem ipsum" servant de base aux clones "récemment
+    // consulté") — sans ça, une course de timing avec l'embed favoris peut
+    // faire que ce template soit déjà "emballé" au moment où il est
+    // capturé pour être cloné, et le clone hérite alors d'un état cassé.
+    if (card.closest('[data-skip-hover]')) return;
+
+    if (card.dataset.hoverInit === "true") return;
+    card.dataset.hoverInit = "true";
+
     const header = card.querySelector(".product-card-header");
     const subtitle = card.querySelector(".product-card-subtitle");
     if (!header || !subtitle) return;

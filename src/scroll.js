@@ -81,6 +81,7 @@ function initProjectSnap(lenis) {
 
 function initLenis() {
   if (window.lenis || typeof Lenis === "undefined") return;
+  if (window.innerWidth < 992) return;
   const lenis = new Lenis({
     duration: 1.1,
     smoothWheel: true,

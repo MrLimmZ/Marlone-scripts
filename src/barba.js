@@ -1,295 +1,339 @@
-function getDominantColor(src, cb) {
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.onload = function () {
-    try {
-      const canvas = document.createElement("canvas");
-      const SIZE = 10;
-      canvas.width = SIZE;
-      canvas.height = SIZE;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, SIZE, SIZE);
-      const data = ctx.getImageData(0, 0, SIZE, SIZE).data;
-      let r = 0,
-        g = 0,
-        b = 0,
-        count = 0;
-      for (let i = 0; i < data.length; i += 4) {
-        r += data[i];
-        g += data[i + 1];
-        b += data[i + 2];
-        count++;
-      }
-      cb(
-        `rgb(${Math.round(r / count)},${Math.round(g / count)},${Math.round(b / count)})`,
-      );
-    } catch (e) {
-      cb(null);
-    }
-  };
-  img.onerror = () => cb(null);
-  img.src = src;
-}
-
-function initImageReveal() {
-  const targets = document.querySelectorAll("img[data-reveal]");
-  const isDark = !document.body.classList.contains("theme-light");
-
-  targets.forEach((img) => {
-    if (img.dataset.revealInit === "true") return;
-    img.dataset.revealInit = "true";
-
-    const styleAtInit = img.getAttribute("style") || "";
-    if (styleAtInit.includes("display: none")) return;
-
-    const wrapper = document.createElement("div");
-    wrapper.style.cssText = `
-      position: relative;
-      overflow: hidden;
-      display: block;
-      width: 100%;
-      transition: transform 600ms ease-in-out;
-    `;
-
-    wrapper.addEventListener("mouseenter", () => {
-      wrapper.style.transform = "scale(1.02)";
-    });
-    wrapper.addEventListener("mouseleave", () => {
-      wrapper.style.transform = "scale(1)";
-    });
-
-    img.parentNode.insertBefore(wrapper, img);
-    wrapper.appendChild(img);
-
-    const bg = document.createElement("div");
-    bg.style.cssText = `
-      position: absolute;
-      inset: 0;
-      z-index: 1;
-      background: ${isDark ? "#1a1a1a" : "#e8e8e8"};
-      transition: opacity 0.6s ease;
-      pointer-events: none;
-    `;
-    wrapper.appendChild(bg);
-
-    img.style.position = "relative";
-    img.style.zIndex = "2";
-    img.style.opacity = "0";
-    img.style.transition = "opacity 0.8s ease";
-    img.style.width = "100%";
-
-    function reveal() {
-      const src = img.currentSrc || img.src;
-      if (!src || src.includes("placeholder")) return;
-      const styleAtReveal = img.getAttribute("style") || "";
-      if (styleAtReveal.includes("display: none")) return;
-      getDominantColor(src, (color) => {
-        if (color) bg.style.background = color;
-        setTimeout(() => {
-          const styleAtFade = img.getAttribute("style") || "";
-          if (styleAtFade.includes("display: none")) return;
-          img.style.opacity = "1";
-        }, 400);
-      });
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          observer.unobserve(img);
-          const styleAtObserve = img.getAttribute("style") || "";
-          if (styleAtObserve.includes("display: none")) return;
-          if (img.complete && img.naturalWidth > 0) {
-            reveal();
-          } else {
-            img.addEventListener("load", reveal, { once: true });
-          }
-        });
-      },
-      { threshold: 0.5 },
-    );
-
-    observer.observe(img);
-  });
-}
-
-// ─── Reveal de texte / logo au scroll ──────────────────────────────────────
-
 (function () {
-  const REVEAL_CLIP_PATH = 'inset(-20% -10% -10% -10%)';
-
-  function setupTextReveal() {
-    const targets = document.querySelectorAll('[data-text-reveal]');
-
-    targets.forEach((el) => {
-      if (el.dataset.textRevealInit === 'true') return;
-      el.dataset.textRevealInit = 'true';
-
-      const computedDisplay = window.getComputedStyle(el).display;
-      const isInline = computedDisplay === 'inline' || computedDisplay === 'inline-block';
-
-      const wrapper = document.createElement('div');
-      wrapper.style.cssText = `display: ${isInline ? 'inline-block' : 'block'}; clip-path: ${REVEAL_CLIP_PATH};`;
-
-      el.parentNode.insertBefore(wrapper, el);
-      wrapper.appendChild(el);
-
-      gsap.set(el, { y: '110%', opacity: 0 });
+  (function patchDOMContentLoaded() {
+    [document, window].forEach((target) => {
+      const nativeAdd = target.addEventListener;
+      target.addEventListener = function (type, listener, options) {
+        if (type === 'DOMContentLoaded' && document.readyState !== 'loading') {
+          if (typeof listener === 'function') {
+            setTimeout(listener, 0);
+          } else if (listener && typeof listener.handleEvent === 'function') {
+            setTimeout(() => listener.handleEvent(), 0);
+          }
+          return;
+        }
+        return nativeAdd.call(this, type, listener, options);
+      };
     });
-  }
+  })();
 
-  function setupLogoReveal() {
-    const svgs = document.querySelectorAll('[data-logo-reveal]');
+  window.addEventListener(
+    'wheel',
+    () => {
+      console.log('[RAW-WHEEL-DEBUG] wheel détecté au niveau window — overflow html:', document.documentElement.style.overflow, '| overflow body:', document.body.style.overflow, '| lenis isStopped:', window.lenis?.isStopped);
+    },
+    { passive: true, capture: true },
+  );
 
-    svgs.forEach((svg) => {
-      if (svg.dataset.logoRevealInit === 'true') return;
-      svg.dataset.logoRevealInit = 'true';
+  document.addEventListener(
+    'click',
+    function (e) {
+      const link = e.target.closest('a[href]');
+      if (!link) return;
+      if (link.target === '_blank') return;
+      if (link.hasAttribute('data-modal-open') || link.hasAttribute('data-modal-close')) return;
+      // Liens qui gèrent leur propre logique de clic (filtres, tris, etc.)
+      // et ne doivent jamais être interceptés par ce scroll-to-top.
+      if (link.closest('.filters-panel') || link.closest('.filter-slide')) return;
 
-      svg.style.overflow = 'visible';
+      let url;
+      try {
+        url = new URL(link.href, window.location.href);
+      } catch (err) {
+        return;
+      }
+      if (url.origin !== window.location.origin) return;
 
-      const paths = Array.from(svg.querySelectorAll('path'));
-      if (!paths.length) return;
+      const normalize = (p) => (p || '').replace(/\/$/, '') || '/';
+      const samePath = normalize(url.pathname) === normalize(window.location.pathname);
+      const sameSearch = url.search === window.location.search;
+      if (!samePath || !sameSearch) return;
+      if (url.hash && url.hash !== window.location.hash) return;
 
-      const viewBox = svg.viewBox.baseVal;
-      const svgHeight = viewBox ? viewBox.height : 100;
-      const offset = svgHeight * 1.2;
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
 
-      paths.forEach((path) => {
-        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        path.parentNode.insertBefore(g, path);
-        g.appendChild(path);
-      });
+      function callActiveFixedSectionSnapExit() {
+        for (const k in window) {
+          if (k.indexOf('__fixedSectionSnapExitToTop_') === 0 && typeof window[k] === 'function') {
+            window[k]();
+            return true;
+          }
+        }
+        return false;
+      }
 
-      const groups = svg.querySelectorAll('g');
-      gsap.set(groups, { opacity: 1, y: offset });
-    });
-  }
+      if (typeof window.__footerRevealScrollToTop === 'function') {
+        window.__footerRevealScrollToTop();
+      } else if (callActiveFixedSectionSnapExit()) {
+      } else if (window.lenis) {
+        window.lenis.scrollTo(0, { duration: 1.2 });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    },
+    true,
+  );
 
-  // Attache un observer par élément, une seule fois (dataset guard) — sûr
-  // à rappeler à chaque transition Barba : les nouveaux éléments du
-  // container swappé n'ont pas encore ce flag et se font bien attacher un
-  // observer, tandis que les éléments persistants (nav, logo) hors
-  // container ne se retrouvent jamais avec plusieurs observers empilés.
-  function startTextReveal() {
-    document.querySelectorAll('[data-text-reveal]').forEach((el) => {
-      if (el.dataset.textRevealObserved === 'true') return;
-      el.dataset.textRevealObserved = 'true';
-
-      const wrapper = el.parentNode;
-      const shouldRepeat = el.hasAttribute('data-text-repeat');
-
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              wrapper.style.clipPath = REVEAL_CLIP_PATH;
-              gsap.to(el, {
-                y: '0%',
-                opacity: 1,
-                duration: 0.8,
-                ease: 'power3.out',
-                delay: parseFloat(el.dataset.textRevealDelay || 0),
-                onComplete: () => {
-                  wrapper.style.clipPath = 'none';
-
-                  // Fix hover bloqué : on ne nettoie les styles inline
-                  // que si l'élément n'est pas en mode "repeat"
-                  // (sinon on casse l'animation de sortie/réapparition au scroll)
-                  if (!shouldRepeat) {
-                    gsap.set(el, { clearProps: 'opacity,transform' });
-                  }
-                },
-              });
-              if (!shouldRepeat) observer.unobserve(wrapper);
-            } else if (shouldRepeat) {
-              wrapper.style.clipPath = REVEAL_CLIP_PATH;
-              gsap.set(el, { y: '110%', opacity: 0 });
-            }
-          });
-        },
-        { threshold: 0.1 },
-      );
-
-      observer.observe(wrapper);
-    });
-  }
-
-  function startLogoReveal() {
-    document.querySelectorAll('[data-logo-reveal]').forEach((svg) => {
-      if (svg.dataset.logoRevealObserved === 'true') return;
-      svg.dataset.logoRevealObserved = 'true';
-
-      const groups = svg.querySelectorAll('g');
-
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (!entry.isIntersecting) return;
-            observer.unobserve(svg);
-
-            gsap.to(groups, {
-              opacity: 1,
-              y: 0,
-              duration: 0.7,
-              ease: 'power3.out',
-              stagger: 0.06,
-              delay: parseFloat(svg.dataset.logoRevealDelay || 0),
-              onComplete: () => {
-                gsap.set(groups, { clearProps: 'opacity,transform' });
-              },
-            });
-          });
-        },
-        { threshold: 0.3 },
-      );
-
-      observer.observe(svg);
-    });
-  }
-
-  function waitForGsap(cb) {
-    if (typeof gsap !== 'undefined') {
+  function waitFor(checkFn, cb) {
+    if (checkFn()) {
       cb();
       return;
     }
     const poll = setInterval(() => {
-      if (typeof gsap !== 'undefined') {
+      if (checkFn()) {
         clearInterval(poll);
         cb();
       }
     }, 50);
   }
 
-  function setup() {
-    waitForGsap(() => {
-      setupTextReveal();
-      setupLogoReveal();
+  // ⚠️ Webflow.destroy()/Webflow.ready() ne DOIT JAMAIS être appelé ici.
+  // Webflow.destroy() vide définitivement toutes les interactions IX3
+  // enregistrées (menu, search, favoris, switch...), et Webflow.ready()
+  // ne les recrée pas — elles ne vivent que dans le script one-shot généré
+  // au vrai chargement de page, jamais relancé.
+  const PAGE_BODY_ATTRIBUTES = ['data-footer-managed'];
+  const NAV_ATTRIBUTES = ['data-nav-theme'];
+
+  function syncBodyAttributes(nextDoc) {
+    PAGE_BODY_ATTRIBUTES.forEach((attr) => {
+      const value = nextDoc.body.getAttribute(attr);
+      if (value !== null) {
+        document.body.setAttribute(attr, value);
+      } else {
+        document.body.removeAttribute(attr);
+      }
     });
   }
 
-  function startAnimations() {
-    waitForGsap(() => {
-      startTextReveal();
-      startLogoReveal();
+  function syncNavAttributes(nextDoc) {
+    const liveNav = document.querySelector('.nav[role="banner"]');
+    const nextNav = nextDoc.querySelector('.nav[role="banner"]');
+    if (!liveNav || !nextNav) return;
+    NAV_ATTRIBUTES.forEach((attr) => {
+      const value = nextNav.getAttribute(attr);
+      if (value !== null) {
+        liveNav.setAttribute(attr, value);
+      } else {
+        liveNav.removeAttribute(attr);
+      }
     });
   }
 
-  // setup() cache les éléments fraîchement insérés dès que possible (évite
-  // le flash) — startAnimations() n'attache les observers de scroll
-  // qu'une fois transition:done reçu, jamais pendant que l'overlay couvre
-  // encore l'écran. Les deux sont rejouables à chaque transition Barba.
-  window.__revealSetup = setup;
-  window.__revealSetupAndStart = function () {
-    setup();
-    startAnimations();
-  };
+  // Classe native Webflow ("Component Variants" du Designer, ex:
+  // w-variant-691a7966-...) — indépendante de notre système data-nav-theme,
+  // posée sur la nav ET tous ses descendants (icônes mobile, liens...) par
+  // le HTML brut de CHAQUE page. Comme la nav est persistante (jamais
+  // remplacée par Barba), cette classe reste collée de la page précédente
+  // si on ne la resynchronise pas explicitement — pouvant forcer des
+  // couleurs de la page d'origine (ex: texte blanc) sur la page de
+  // destination, potentiellement invisible sur fond de couleur différente.
+  const WF_VARIANT_PATTERN = /^w-variant-[\w-]+$/;
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setup);
-  } else {
-    setup();
+  function syncNavVariantClass(nextDoc) {
+    const liveNav = document.querySelector('.nav[role="banner"]');
+    const nextNav = nextDoc.querySelector('.nav[role="banner"]');
+    if (!liveNav || !nextNav) return;
+
+    const nextVariantClass = Array.from(nextNav.classList).find((c) => WF_VARIANT_PATTERN.test(c)) || null;
+
+    const liveElsWithVariant = [liveNav, ...liveNav.querySelectorAll('[class*="w-variant-"]')];
+    liveElsWithVariant.forEach((el) => {
+      const oldVariantClass = Array.from(el.classList).find((c) => WF_VARIANT_PATTERN.test(c));
+      if (oldVariantClass) el.classList.remove(oldVariantClass);
+      if (nextVariantClass) el.classList.add(nextVariantClass);
+    });
   }
 
-  window.addEventListener('transition:done', startAnimations);
+  function updateActiveNavLink() {
+    const normalize = (p) => (p || '').replace(/\/$/, '') || '/';
+    const current = normalize(window.location.pathname);
+    document.querySelectorAll('.nav .nav-bar-link, .nav .menu-link').forEach((link) => {
+      const isCurrent = normalize(link.pathname) === current;
+      link.classList.toggle('w--current', isCurrent);
+      if (isCurrent) {
+        link.setAttribute('aria-current', 'page');
+      } else {
+        link.removeAttribute('aria-current');
+      }
+    });
+  }
+
+  function reinitWebflow(data) {
+    const parser = new DOMParser();
+    const nextDoc = parser.parseFromString(data.next.html, 'text/html');
+    const nextPageId = nextDoc.documentElement.getAttribute('data-wf-page');
+    if (nextPageId) document.documentElement.setAttribute('data-wf-page', nextPageId);
+
+    syncBodyAttributes(nextDoc);
+    syncNavAttributes(nextDoc);
+    syncNavVariantClass(nextDoc);
+    updateActiveNavLink();
+
+    const oldIxData = document.querySelector('script[type="application/json"][data-wf-page]');
+    const newIxData = nextDoc.querySelector('script[type="application/json"][data-wf-page]');
+    if (oldIxData) oldIxData.remove();
+    if (newIxData) document.head.appendChild(document.adoptNode(newIxData));
+  }
+
+  function reexecuteScripts(container, nextHtml) {
+    const containerScripts = container.querySelectorAll('script');
+    containerScripts.forEach((oldScript) => {
+      const newScript = document.createElement('script');
+      Array.from(oldScript.attributes).forEach((attr) => {
+        newScript.setAttribute(attr.name, attr.value);
+      });
+      newScript.textContent = oldScript.textContent;
+      oldScript.replaceWith(newScript);
+    });
+
+    const parser = new DOMParser();
+    const nextDoc = parser.parseFromString(nextHtml, 'text/html');
+
+    // Le style DOIT être réinjecté avant le script : un <script> s'exécute
+    // immédiatement dès son insertion dans le DOM, donc si le CSS n'est pas
+    // encore en place, un script qui vérifie du getComputedStyle (ex:
+    // initFixedSectionSnap qui checke position:fixed) verrait l'ancien état
+    // ou aucun style du tout — exactement ce qui cassait la séquence fixe
+    // sur les pages produit après une transition Barba.
+    document.querySelectorAll('style[data-page-style]').forEach((el) => el.remove());
+
+    nextDoc.querySelectorAll('style[data-page-style]').forEach((oldStyle) => {
+      const newStyle = document.createElement('style');
+      Array.from(oldStyle.attributes).forEach((attr) => {
+        newStyle.setAttribute(attr.name, attr.value);
+      });
+      newStyle.setAttribute('data-injected-by-barba', 'true');
+      newStyle.textContent = oldStyle.textContent;
+      document.head.appendChild(newStyle);
+    });
+
+    const oldPageScripts = document.querySelectorAll('script[data-page-script]');
+    oldPageScripts.forEach((el) => el.remove());
+
+    const newPageScripts = nextDoc.querySelectorAll('script[data-page-script]');
+    newPageScripts.forEach((oldScript) => {
+      const newScript = document.createElement('script');
+      Array.from(oldScript.attributes).forEach((attr) => {
+        newScript.setAttribute(attr.name, attr.value);
+      });
+      newScript.setAttribute('data-injected-by-barba', 'true');
+      newScript.textContent = oldScript.textContent;
+      document.body.appendChild(newScript);
+    });
+  }
+
+  function reinitContentFeatures(container) {
+    if (typeof initImageReveal === 'function') initImageReveal();
+    if (typeof initProductCardHover === 'function') initProductCardHover();
+    if (typeof initLightbox === 'function') initLightbox();
+    if (typeof initNavScrolled === 'function') initNavScrolled();
+    if (typeof window.__revealSetup === 'function') window.__revealSetup();
+    if (typeof window.__reinitFavorites === 'function') window.__reinitFavorites(container);
+    if (typeof window.__initModalScrollLenis === 'function') window.__initModalScrollLenis();
+    if (typeof bindModalTriggers === 'function') bindModalTriggers(container);
+  }
+
+  function initBarba() {
+    barba.init({
+      preventRunning: true,
+      transitions: [
+        {
+          name: 'default',
+
+          async leave(data) {
+            console.log('[BARBA-DEBUG] leave() — de', data.current?.namespace, 'vers', data.next?.namespace, '| window.lenis isStopped:', window.lenis?.isStopped, '| window._snapLocked:', window._snapLocked);
+
+            if (typeof window.__modals !== 'undefined' && window.__modals.closeAll) {
+              window.__modals.closeAll();
+            }
+
+            if (typeof window.__transitionCoverInstant === 'function') {
+              window.__barbaGen = window.__transitionCoverInstant();
+              await window.__transitionRevealMask(window.__barbaGen);
+            } else {
+              await new Promise((resolve) => setTimeout(resolve, 450));
+            }
+
+            console.log('[BARBA-DEBUG] leave() — __currentPageCleanup existe:', typeof window.__currentPageCleanup === 'function');
+            if (typeof window.__currentPageCleanup === 'function') {
+              window.__currentPageCleanup();
+            }
+
+            const foundKeys = [];
+            for (const k in window) {
+              if (k.indexOf('__fixedSectionSnapCleanup_') === 0 && typeof window[k] === 'function') {
+                foundKeys.push(k);
+                window[k]();
+              }
+            }
+            console.log('[BARBA-DEBUG] leave() — clés __fixedSectionSnapCleanup_* trouvées et nettoyées:', foundKeys);
+            window._snapLocked = false;
+            console.log('[BARBA-DEBUG] leave() — fin. window.lenis isStopped:', window.lenis?.isStopped, '| window._snapLocked:', window._snapLocked);
+          },
+
+          async afterEnter(data) {
+            console.log('[BARBA-DEBUG] afterEnter() début — window.lenis isStopped:', window.lenis?.isStopped, '| window._snapLocked:', window._snapLocked);
+
+            reinitWebflow(data);
+            reexecuteScripts(data.next.container, data.next.html);
+
+            console.log('[BARBA-DEBUG] afterEnter() après reexecuteScripts (scripts data-page-script relancés) — window.lenis isStopped:', window.lenis?.isStopped);
+
+            if (typeof initFooterReveal === 'function') {
+              initFooterReveal();
+            }
+
+            if (window.lenis) {
+              window.lenis.resize();
+              window.lenis.scrollTo(0, { immediate: true });
+            }
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+
+            reinitContentFeatures(data.next.container);
+
+            if (typeof initPageFeatures === 'function') {
+              initPageFeatures(data.next.container);
+            }
+
+            await new Promise((resolve) => {
+              requestAnimationFrame(() => {
+                requestAnimationFrame(resolve);
+              });
+            });
+
+            if (window.lenis) {
+              window.lenis.resize();
+              window.lenis.scrollTo(0, { immediate: true });
+            }
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+
+            if (data.current && data.current.container && document.body.contains(data.current.container)) {
+              data.current.container.style.display = 'none';
+            }
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+
+            if (typeof window.__transitionHideOverlay === 'function') {
+              await window.__transitionHideOverlay(window.__barbaGen);
+            }
+
+            window.dispatchEvent(new CustomEvent('transition:done'));
+
+            if (window.lenis) {
+              setTimeout(() => window.lenis.resize(), 500);
+            }
+          },
+        },
+      ],
+    });
+  }
+
+  waitFor(() => typeof barba !== 'undefined', initBarba);
 })();

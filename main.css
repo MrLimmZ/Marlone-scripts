@@ -4,7 +4,7 @@ html.resizing * {
 }
 
 :root {
-  --build-version: "2026-07-30-1"; /* ← à incrémenter à chaque déploiement */
+  --build-version: "2026-07-30-1";
 }
 
 html.snap-active {
@@ -98,6 +98,10 @@ body:not(.theme-light) .product-card_banner:not(.dark) {
   color: var(--_colors---white);
 }
 
+.nav[data-nav-theme="light"].scrolled {
+  color: var(--_theme---text-color) !important;
+}
+
 .nav[data-nav-theme="light"] .favorites-badge {
   background-color: var(--_colors---white) !important;
 }
@@ -151,7 +155,7 @@ svg * {
 
 @media (min-width: 992px) {
   .footer {
-    z-index: 99;
+    z-index: 999;
   }
 }
 
@@ -160,6 +164,16 @@ svg * {
   transition-property: none;
 }
 
-.footer div:nth-child(2) {
-  width: 100%;
+#wishlist-list [data-wishlist-link] .image-5 {
+  transition: transform 600ms ease-in-out;
+}
+#wishlist-list [data-wishlist-link] .image-5:hover {
+  transform: scale(1.02);
+}
+
+#search-list .product-card-image {
+  transition: transform 600ms ease-in-out;
+}
+#search-list .product-card-image:hover {
+  transform: scale(1.02);
 }

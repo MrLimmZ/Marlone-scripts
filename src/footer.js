@@ -13,12 +13,14 @@ function initFooterReveal() {
   }
 
   let footerVisible = false;
-  let locked = false;
   let atBottomSince = null;
   const AT_BOTTOM_DELAY = 400;
   let wheelAccumulator = 0;
   const WHEEL_THRESHOLD = 200;
   const DRAG_THRESHOLD = 60;
+
+  let lastToggleTime = 0;
+  const TOGGLE_COOLDOWN = 0;
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
@@ -26,39 +28,81 @@ function initFooterReveal() {
     });
   });
 
-  function showFooter() {
-    footer.classList.add('is-visible');
-    footer.scrollTop = 0;
-    footerVisible = true;
-    document.documentElement.classList.add('snap-active');
-    if (window.lenis) window.lenis.stop();
+  let footerLenis = null;
+  function ensureFooterLenis() {
+    if (footerLenis) return footerLenis;
+    if (typeof Lenis === 'undefined') return null;
+    if (window.innerWidth <= 991) return null;
+    footerLenis = new Lenis({
+      wrapper: footer,
+      content: footer.firstElementChild || footer,
+      duration: 1.1,
+      smoothWheel: true,
+      syncTouch: true,
+      autoRaf: true,
+    });
+    registerCleanup(() => {
+      footerLenis.destroy();
+      footerLenis = null;
+    });
+    return footerLenis;
   }
 
-  function hideFooter() {
-    footer.classList.remove('is-visible');
-    footerVisible = false;
-    document.documentElement.classList.remove('snap-active');
-    if (window.lenis && (typeof hasOpenModal !== 'function' || !hasOpenModal()) && !document.body.classList.contains('lightbox-open')) {
-      window.lenis.start();
+  let lenisRestartTimer = null;
+  function clearLenisRestartTimer() {
+    if (lenisRestartTimer) {
+      clearTimeout(lenisRestartTimer);
+      lenisRestartTimer = null;
+    }
+  }
+  registerCleanup(clearLenisRestartTimer);
+
+  function showFooter() {
+    clearLenisRestartTimer();
+    footer.classList.add('is-visible');
+    footerVisible = true;
+    lastToggleTime = Date.now();
+    document.documentElement.classList.add('snap-active');
+    if (window.lenis) window.lenis.stop();
+    const fl = ensureFooterLenis();
+    if (fl) {
+      fl.scrollTo(0, { immediate: true });
+      fl.stop();
+      const unfreezeTimer = setTimeout(() => {
+        if (footerLenis && footerVisible) footerLenis.start();
+      }, 1050);
+      registerCleanup(() => clearTimeout(unfreezeTimer));
+    } else {
+      footer.scrollTop = 0;
     }
   }
 
-  function lock(cb) {
-    if (locked) return;
-    locked = true;
-    window._snapLocked = true;
-    cb();
-    setTimeout(() => {
-      locked = false;
-      window._snapLocked = false;
-    }, 1100);
+  function hideFooter() {
+    clearLenisRestartTimer();
+    footer.classList.remove('is-visible');
+    footerVisible = false;
+    lastToggleTime = Date.now();
+    document.documentElement.classList.remove('snap-active');
+    if (footerLenis) footerLenis.stop();
+    lenisRestartTimer = setTimeout(() => {
+      lenisRestartTimer = null;
+      if (!footerVisible && window.lenis && (typeof hasOpenModal !== 'function' || !hasOpenModal()) && !document.body.classList.contains('lightbox-open')) {
+        window.lenis.start();
+      }
+    }, 1050);
+  }
+
+  function canToggleNow() {
+    return Date.now() - lastToggleTime >= TOGGLE_COOLDOWN;
   }
 
   function isAtBottomOfFooter() {
+    if (footerLenis) return footerLenis.scroll >= footerLenis.limit - 10;
     return footer.scrollTop + footer.clientHeight >= footer.scrollHeight - 50;
   }
 
   function isAtTopOfFooter() {
+    if (footerLenis) return footerLenis.scroll <= 10;
     return footer.scrollTop <= 10;
   }
 
@@ -76,13 +120,13 @@ function initFooterReveal() {
     if (touchStartY === null) return;
     const deltaY = e.changedTouches[0].clientY - touchStartY;
     touchStartY = null;
-    if (locked) return;
+    if (!canToggleNow()) return;
     if (!footerVisible) {
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
       const atBottom = window.scrollY >= maxScroll - 20;
-      if (atBottom && deltaY < -DRAG_THRESHOLD) lock(() => showFooter());
+      if (atBottom && deltaY < -DRAG_THRESHOLD) showFooter();
     } else {
-      if (deltaY > DRAG_THRESHOLD && isAtTopOfFooter()) lock(() => hideFooter());
+      if (deltaY > DRAG_THRESHOLD && isAtTopOfFooter()) hideFooter();
     }
   };
 
@@ -95,23 +139,19 @@ function initFooterReveal() {
 
   function onWheel(e) {
     if (typeof hasOpenModal === 'function' && hasOpenModal()) return;
-    if (locked) {
-      e.preventDefault();
-      e.stopPropagation();
-      return;
-    }
 
     if (footerVisible) {
-      e.preventDefault();
-      e.stopPropagation();
       if (e.deltaY > 0) {
-        if (!isAtBottomOfFooter()) footer.scrollTop += e.deltaY;
+        if (isAtBottomOfFooter()) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
       } else {
         if (isAtTopOfFooter()) {
+          e.preventDefault();
+          e.stopPropagation();
           wheelAccumulator = 0;
-          lock(() => hideFooter());
-        } else {
-          footer.scrollTop += e.deltaY;
+          if (canToggleNow()) hideFooter();
         }
       }
       return;
@@ -123,7 +163,7 @@ function initFooterReveal() {
       wheelAccumulator += e.deltaY;
       if (wheelAccumulator >= WHEEL_THRESHOLD) {
         wheelAccumulator = 0;
-        lock(() => showFooter());
+        if (canToggleNow()) showFooter();
       }
       return;
     }
@@ -182,5 +222,24 @@ function initFooterReveal() {
     footer.classList.remove('is-ready', 'is-visible');
     document.documentElement.classList.remove('snap-active');
     window.__footerRevealCleanup = null;
+    window.__footerRevealScrollToTop = null;
+  };
+
+  // Exposé pour le clic "même page" (barba-test.js) : si le footer est
+  // visible, la molette Lenis principale n'a aucun effet visuel (il est en
+  // position:fixed par-dessus tout) — il faut d'abord jouer l'animation de
+  // fermeture, PUIS scroller la page principale vers le haut une fois le
+  // footer réellement parti de l'écran (~1050ms, transition CSS).
+  window.__footerRevealScrollToTop = function () {
+    const scrollMainToTop = () => {
+      if (window.lenis) window.lenis.scrollTo(0, { duration: 1.2 });
+      else window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    if (footerVisible) {
+      hideFooter();
+      setTimeout(scrollMainToTop, 1050);
+    } else {
+      scrollMainToTop();
+    }
   };
 }

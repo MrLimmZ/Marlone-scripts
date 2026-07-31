@@ -118,6 +118,14 @@ function initImageReveal() {
 
 (function () {
   const REVEAL_CLIP_PATH = 'inset(-20% -10% -10% -10%)';
+  const MOBILE_BREAKPOINT = 991;
+
+  // Un élément marqué data-reveal-desktop-only reste affiché directement
+  // sur mobile, sans passer par l'état caché ni l'observer de scroll —
+  // utile quand l'effet ne rend pas bien sur petit écran.
+  function isDesktopOnlyOnMobile(el) {
+    return el.hasAttribute('data-reveal-desktop-only') && window.innerWidth <= MOBILE_BREAKPOINT;
+  }
 
   function setupTextReveal() {
     const targets = document.querySelectorAll('[data-text-reveal]');
@@ -125,6 +133,11 @@ function initImageReveal() {
     targets.forEach((el) => {
       if (el.dataset.textRevealInit === 'true') return;
       el.dataset.textRevealInit = 'true';
+
+      if (isDesktopOnlyOnMobile(el)) {
+        gsap.set(el, { clearProps: 'opacity,transform' });
+        return;
+      }
 
       const computedDisplay = window.getComputedStyle(el).display;
       const isInline = computedDisplay === 'inline' || computedDisplay === 'inline-block';
@@ -146,6 +159,8 @@ function initImageReveal() {
       if (svg.dataset.logoRevealInit === 'true') return;
       svg.dataset.logoRevealInit = 'true';
 
+      if (isDesktopOnlyOnMobile(svg)) return;
+
       svg.style.overflow = 'visible';
 
       const paths = Array.from(svg.querySelectorAll('path'));
@@ -166,14 +181,10 @@ function initImageReveal() {
     });
   }
 
-  // Attache un observer par élément, une seule fois (dataset guard) — sûr
-  // à rappeler à chaque transition Barba : les nouveaux éléments du
-  // container swappé n'ont pas encore ce flag et se font bien attacher un
-  // observer, tandis que les éléments persistants (nav, logo) hors
-  // container ne se retrouvent jamais avec plusieurs observers empilés.
   function startTextReveal() {
     document.querySelectorAll('[data-text-reveal]').forEach((el) => {
       if (el.dataset.textRevealObserved === 'true') return;
+      if (isDesktopOnlyOnMobile(el)) return;
       el.dataset.textRevealObserved = 'true';
 
       const wrapper = el.parentNode;
@@ -218,6 +229,7 @@ function initImageReveal() {
   function startLogoReveal() {
     document.querySelectorAll('[data-logo-reveal]').forEach((svg) => {
       if (svg.dataset.logoRevealObserved === 'true') return;
+      if (isDesktopOnlyOnMobile(svg)) return;
       svg.dataset.logoRevealObserved = 'true';
 
       const groups = svg.querySelectorAll('g');

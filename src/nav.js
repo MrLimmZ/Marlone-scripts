@@ -1,31 +1,43 @@
 function initNavScrolled() {
+  if (window.__navScrolledCleanup) {
+    window.__navScrolledCleanup();
+  }
+
   const nav = document.querySelector(".nav.w-nav");
   if (!nav) return;
-
-  const isLightNav = nav.getAttribute("data-nav-theme") === "light";
-  if (!isLightNav) return;
+  if (nav.getAttribute("data-nav-theme") !== "light") return;
 
   const trigger = document.querySelector(".product-section");
   if (!trigger) return;
 
   function update() {
-    const scrollY = window.scrollY || window.lenis?.scroll || 0;
-    const isScrolled = scrollY >= trigger.offsetTop;
-    nav.classList.toggle("scrolled", isScrolled);
+    const scroll = window.lenis?.scroll ?? window.scrollY ?? 0;
+    nav.classList.toggle("scrolled", scroll >= trigger.offsetTop);
   }
 
-  window.addEventListener("scroll", update, { passive: true });
+  function bind(lenis) {
+    lenis.on("scroll", update);
+    update();
+    window.__navScrolledCleanup = function () {
+      if (lenis && typeof lenis.off === "function") lenis.off("scroll", update);
+      window.__navScrolledCleanup = null;
+    };
+  }
+
   if (window.lenis) {
-    window.lenis.on("scroll", update);
+    bind(window.lenis);
   } else {
     const poll = setInterval(() => {
       if (window.lenis) {
-        window.lenis.on("scroll", update);
         clearInterval(poll);
+        bind(window.lenis);
       }
     }, 100);
+    window.__navScrolledCleanup = function () {
+      clearInterval(poll);
+      window.__navScrolledCleanup = null;
+    };
   }
-  update();
 }
 
 function initFooterLogoHide() {

@@ -49,13 +49,14 @@ function initFixedSectionSnap(options) {
   function ensureNestedLenis(section) {
     if (nestedLenisInstances.has(section)) return nestedLenisInstances.get(section);
     if (typeof Lenis === 'undefined') return null;
-    if (section.scrollHeight <= section.clientHeight + 10) return null; // pas assez de contenu pour justifier un Lenis dédié
+    if (section.scrollHeight <= section.clientHeight + 10) return null;
 
     const instance = new Lenis({
       wrapper: section,
       content: section.firstElementChild || section,
       duration: 1.1,
       smoothWheel: true,
+      syncTouch: true,
       autoRaf: true,
     });
     nestedLenisInstances.set(section, instance);
@@ -77,9 +78,9 @@ function initFixedSectionSnap(options) {
       return {
         isAtTop: () => nested.scroll <= 10,
         isAtBottom: () => nested.scroll >= nested.limit - 10,
-        scrollBy: () => {}, // le scroll natif + Lenis imbriqué gèrent déjà ça eux-mêmes
+        scrollBy: () => {},
         reset: () => nested.scrollTo(0, { immediate: true }),
-        nativeScroll: true, // laisse le wheel natif atteindre ce Lenis imbriqué, pas de preventDefault
+        nativeScroll: true,
       };
     }
 
@@ -228,7 +229,11 @@ function initFixedSectionSnap(options) {
 
     const inFixedMode = currentIndex >= 0;
 
-    if (!inFixedMode && typeof isEligible === 'function' && !isEligible(e)) return;
+    if (!inFixedMode && typeof isEligible === 'function') {
+      const point = e.touches && e.touches[0] ? e.touches[0] : e.changedTouches && e.changedTouches[0] ? e.changedTouches[0] : e;
+      const normalized = { clientX: point.clientX, clientY: point.clientY, deltaY };
+      if (!isEligible(normalized)) return;
+    }
 
     if (inFixedMode) {
       if (locked) {
@@ -339,6 +344,23 @@ function initFixedSectionSnap(options) {
     });
   }
 
+  window[`__fixedSectionSnapExitToTop_${key}`] = function () {
+    function step() {
+      if (currentIndex >= 0) {
+        lock(() => hideCurrent());
+        setTimeout(step, lockDuration);
+      } else if (window.lenis) {
+        window.lenis.scrollTo(0, { duration: 1.2 });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+    step();
+  };
+  registerCleanup(() => {
+    window[`__fixedSectionSnapExitToTop_${key}`] = null;
+  });
+
   window[cleanupKey] = function () {
     cleanupFns.forEach((fn) => {
       try {
@@ -346,6 +368,11 @@ function initFixedSectionSnap(options) {
       } catch (e) {}
     });
     cleanupFns.length = 0;
+    sections.forEach((el) => el.classList.remove('is-visible', 'is-ready'));
+    document.documentElement.classList.remove('snap-active');
+    if (window.lenis && (typeof hasOpenModal !== 'function' || !hasOpenModal()) && !document.body.classList.contains('lightbox-open')) {
+      window.lenis.start();
+    }
     window[cleanupKey] = null;
   };
 }
