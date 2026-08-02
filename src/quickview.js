@@ -34,10 +34,8 @@
   window.__quickViewClearCache = function (url) {
     if (url) {
       quickViewCache.delete(url);
-      console.log("[QuickView] Cache vidé pour :", url);
     } else {
       quickViewCache.clear();
-      console.log("[QuickView] Cache entièrement vidé.");
     }
   };
 
@@ -443,28 +441,20 @@
   }
 
   function openQuickView(url) {
-    console.log("[QuickView] openQuickView appelé avec :", url);
 
     if (quickViewCache.has(url)) {
-      console.log("[QuickView] Trouvé en cache :", quickViewCache.get(url));
       showQuickView(quickViewCache.get(url), url);
       return;
     }
 
-    console.log("[QuickView] Pas en cache, fetch en cours...");
-
     fetch(url)
       .then((res) => {
-        console.log("[QuickView] Réponse HTTP reçue, statut :", res.status, res.ok);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.text();
       })
       .then((html) => {
-        console.log("[QuickView] HTML brut reçu, longueur :", html.length);
-        console.log(html);
 
         const data = parseProductPage(html);
-        console.log("[QuickView] Données parsées :", data);
 
         quickViewCache.set(url, data);
         showQuickView(data, url);

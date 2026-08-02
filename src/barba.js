@@ -15,13 +15,6 @@
       };
     });
   })();
-  window.addEventListener(
-    'wheel',
-    () => {
-      console.log('[RAW-WHEEL-DEBUG] wheel détecté au niveau window — overflow html:', document.documentElement.style.overflow, '| overflow body:', document.body.style.overflow, '| lenis isStopped:', window.lenis?.isStopped);
-    },
-    { passive: true, capture: true },
-  );
   document.addEventListener(
     'click',
     function (e) {
