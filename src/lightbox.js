@@ -58,8 +58,13 @@ function getLightboxImgs(group) {
 // ─── Lightbox ───────────────────────────────────────────────────────────────
 
 function initLightbox() {
-  const allImgs = document.querySelectorAll("img[data-lightbox]");
-  if (!allImgs.length) return;
+  // FIX : on ne bloque plus sur l'absence d'images data-lightbox au
+  // chargement de la page. La quickview (et potentiellement d'autres
+  // contenus injectés dynamiquement plus tard) peut ajouter ce genre
+  // d'images sur N'IMPORTE QUELLE page, y compris celles qui n'en ont
+  // aucune statiquement — il faut donc que window._bindAllLightboxImages
+  // et toute l'infra (curseur, structure #slide-lightbox) existent
+  // systématiquement, pas seulement si des images sont déjà présentes.
   if (document.getElementById("slide-lightbox")) return;
 
   const globalCursor = document.createElement("div");
@@ -225,6 +230,11 @@ function initLightbox() {
       transform-origin: center center;
       display: block;
       cursor: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .lb-slide img.is-loaded {
+      opacity: 1;
     }
     #lb-close {
       position: fixed;
@@ -301,6 +311,7 @@ function initLightbox() {
       align-items: center;
       justify-content: center;
       overflow: hidden;
+      position: relative;
     }
     .lb-mobile-slide img {
       max-width: 90%;
@@ -311,13 +322,33 @@ function initLightbox() {
       transform-origin: center center;
       will-change: transform;
       touch-action: none;
-    }
-    #lb-mobile-nav {
+      opacity: 0;
       transition: opacity 0.3s ease;
     }
-    #lb-mobile-nav.is-hidden {
-      opacity: 0;
+    .lb-mobile-slide img.is-loaded {
+      opacity: 1;
+    }
+    /* ─── Spinner de chargement (desktop + mobile) ─────────────────────── */
+    .lb-spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 28px;
+      height: 28px;
+      margin: -14px 0 0 -14px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      opacity: 0.5;
+      animation: lb-spin 0.8s linear infinite;
       pointer-events: none;
+      z-index: 5;
+    }
+    .lb-spinner.is-hidden {
+      display: none;
+    }
+    @keyframes lb-spin {
+      to { transform: rotate(360deg); }
     }
     #lb-prev,
     #lb-next {
@@ -408,6 +439,31 @@ function initLightbox() {
   lineIndicator.id = "lb-line-indicator";
   lbThumbs.appendChild(lineIndicator);
 
+  // ─── Spinner de chargement ────────────────────────────────────────────
+  // Crée un spinner et le lie au cycle de vie de chargement de l'image :
+  // masqué instantanément si l'image est déjà en cache (img.complete),
+  // sinon affiché jusqu'au "load" (ou "error", pour ne pas rester bloqué
+  // indéfiniment si une image casse). Le fade-in de l'image est géré via
+  // la classe .is-loaded (voir CSS ci-dessus).
+  function createSpinner() {
+    const spinner = document.createElement("div");
+    spinner.className = "lb-spinner";
+    return spinner;
+  }
+
+  function attachImageLoader(img, spinner) {
+    function markLoaded() {
+      spinner.classList.add("is-hidden");
+      img.classList.add("is-loaded");
+    }
+    if (img.complete && img.naturalWidth > 0) {
+      markLoaded();
+    } else {
+      img.addEventListener("load", markLoaded, { once: true });
+      img.addEventListener("error", markLoaded, { once: true });
+    }
+  }
+
   function isCurrentZoomed() {
     const activeImg = imgEls[currentIndex];
     return activeImg && activeImg.classList.contains("zoom-active");
@@ -483,16 +539,30 @@ function initLightbox() {
       "transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
   }
 
+  // Une image bloquée par hasOpenModal() ne devrait l'être que si elle est
+  // EN DEHORS de la modal actuellement ouverte (ex: image de fond
+  // masquée par l'overlay). Une image À L'INTÉRIEUR de la modal ouverte
+  // (ex: le slider de la quickview) doit rester pleinement interactive —
+  // sans cette exemption, curseur croix et clic-pour-ouvrir restaient
+  // désactivés sur toute image affichée dans une modal, quickview
+  // comprise.
+  function isInsideOpenModal(img) {
+    const panel = img.closest("[data-modal-panel]");
+    if (!panel) return false;
+    const name = panel.dataset.modalPanel;
+    return typeof window.__modals?.isOpen === "function" && window.__modals.isOpen(name);
+  }
+
   function bindSourceImage(img) {
     if (img.dataset.lightboxBound === "true") return;
     img.dataset.lightboxBound = "true";
     img.addEventListener("mouseenter", () => {
-      if (hasOpenModal()) return;
+      if (hasOpenModal() && !isInsideOpenModal(img)) return;
       img.style.cursor = "none";
       globalCursor.style.display = "block";
     });
     img.addEventListener("mousemove", (e) => {
-      if (hasOpenModal()) {
+      if (hasOpenModal() && !isInsideOpenModal(img)) {
         img.style.cursor = "";
         globalCursor.style.display = "none";
         return;
@@ -505,7 +575,7 @@ function initLightbox() {
       globalCursor.style.display = "none";
     });
     img.addEventListener("click", () => {
-      if (hasOpenModal()) return;
+      if (hasOpenModal() && !isInsideOpenModal(img)) return;
       const group = img.dataset.lightboxGroup || null;
       const currentSlides = getLightboxImgs(group);
       const clickedSrc = img.currentSrc || img.src;
@@ -552,11 +622,14 @@ function initLightbox() {
       slide.style.height = "100vh";
       const img = document.createElement("img");
       img.src = src;
+      const spinner = createSpinner();
       slide.appendChild(img);
+      slide.appendChild(spinner);
       lbTrack.appendChild(slide);
       imgEls.push(img);
       initZoom(img);
       bindImageCursor(img);
+      attachImageLoader(img, spinner);
     });
     images.forEach((src) => {
       const slide = document.createElement("div");
@@ -564,8 +637,11 @@ function initLightbox() {
       const img = document.createElement("img");
       img.src = src;
       img.draggable = false;
+      const spinner = createSpinner();
       slide.appendChild(img);
+      slide.appendChild(spinner);
       lbMobileTrack.appendChild(slide);
+      attachImageLoader(img, spinner);
     });
   }
 

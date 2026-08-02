@@ -4,8 +4,8 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "dev": "chokidar 'src/*.js' -c 'cat src/theme.js src/modals.js src/scroll.js src/nav.js src/cookies.js src/product-hover.js src/lightbox.js src/reveal.js src/barba.js src/footer.js src/resize-guard.js src/fixed-section-snap.js src/core.js > main.js && terser main.js -o main.js -c -m' --initial & vite --port 3000",
-    "deploy": "cat src/theme.js src/modals.js src/scroll.js src/nav.js src/cookies.js src/product-hover.js src/lightbox.js src/reveal.js src/barba.js src/footer.js src/resize-guard.js src/fixed-section-snap.js src/core.js > main.js && terser main.js -o main.js -c -m && git add . && git commit -m 'update' && git push && node purge.js"
+    "dev": "chokidar 'src/*.js' -c 'cat src/theme.js src/modals.js src/scroll.js src/nav.js src/cookies.js src/product-hover.js src/lightbox.js src/reveal.js src/barba.js src/footer.js src/resize-guard.js src/fixed-section-snap.js src/quickview.js src/core.js > main.js && terser main.js -o main.js -c -m' --initial & vite --port 3000",
+    "deploy": "cat src/theme.js src/modals.js src/scroll.js src/nav.js src/cookies.js src/product-hover.js src/lightbox.js src/reveal.js src/barba.js src/footer.js src/resize-guard.js src/fixed-section-snap.js src/quickview.js src/core.js > main.js && terser main.js -o main.js -c -m && git add . && git commit -m 'update' && git push && node purge.js"
   },
   "repository": {
     "type": "git",

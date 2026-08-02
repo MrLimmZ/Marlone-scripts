@@ -37,10 +37,19 @@ function initImageReveal() {
 
   targets.forEach((img) => {
     if (img.dataset.revealInit === "true") return;
-    img.dataset.revealInit = "true";
 
+    // FIX : on vérifie le display:none AVANT de poser le flag revealInit.
+    // Avant, le flag était posé en premier, donc une image cachée au
+    // chargement (ex: la version "dark" pendant que le thème clair est
+    // actif) était marquée "traitée" à vie et ne recevait jamais son
+    // wrapper/bg/opacity — même une fois rendue visible plus tard par un
+    // switch de thème. Résultat : elle gardait sa taille "brute" au lieu
+    // de suivre le même comportement (ratio, scale au hover, etc.) que
+    // l'image qui, elle, avait été correctement wrappée.
     const styleAtInit = img.getAttribute("style") || "";
     if (styleAtInit.includes("display: none")) return;
+
+    img.dataset.revealInit = "true";
 
     const wrapper = document.createElement("div");
     wrapper.style.cssText = `
@@ -114,15 +123,17 @@ function initImageReveal() {
   });
 }
 
+// Exposé globalement pour pouvoir être rappelé depuis le script de thème
+// (theme-switch.js) juste après qu'une image dark/light change de display,
+// afin de la wrapper immédiatement si elle ne l'a pas encore été.
+window.initImageReveal = initImageReveal;
+
 // ─── Reveal de texte / logo au scroll ──────────────────────────────────────
 
 (function () {
   const REVEAL_CLIP_PATH = 'inset(-20% -10% -10% -10%)';
   const MOBILE_BREAKPOINT = 991;
 
-  // Un élément marqué data-reveal-desktop-only reste affiché directement
-  // sur mobile, sans passer par l'état caché ni l'observer de scroll —
-  // utile quand l'effet ne rend pas bien sur petit écran.
   function isDesktopOnlyOnMobile(el) {
     return el.hasAttribute('data-reveal-desktop-only') && window.innerWidth <= MOBILE_BREAKPOINT;
   }
@@ -204,9 +215,6 @@ function initImageReveal() {
                 onComplete: () => {
                   wrapper.style.clipPath = 'none';
 
-                  // Fix hover bloqué : on ne nettoie les styles inline
-                  // que si l'élément n'est pas en mode "repeat"
-                  // (sinon on casse l'animation de sortie/réapparition au scroll)
                   if (!shouldRepeat) {
                     gsap.set(el, { clearProps: 'opacity,transform' });
                   }
@@ -287,10 +295,6 @@ function initImageReveal() {
     });
   }
 
-  // setup() cache les éléments fraîchement insérés dès que possible (évite
-  // le flash) — startAnimations() n'attache les observers de scroll
-  // qu'une fois transition:done reçu, jamais pendant que l'overlay couvre
-  // encore l'écran. Les deux sont rejouables à chaque transition Barba.
   window.__revealSetup = setup;
   window.__revealSetupAndStart = function () {
     setup();

@@ -13,55 +13,43 @@ function initFixedSectionSnap(options) {
     isEligible,
     enableTouch = true,
   } = options;
-
   console.log('[SNAP]', key, '— init. innerWidth:', window.innerWidth, '| disableBelowWidth:', disableBelowWidth, '| entry:', JSON.stringify(entry));
-
   const cleanupKey = `__fixedSectionSnapCleanup_${key}`;
   if (window[cleanupKey]) {
     window[cleanupKey]();
   }
-
   if (window.innerWidth < disableBelowWidth) {
     console.log('[SNAP]', key, '— ABANDON largeur trop petite');
     return;
   }
-
   const cleanupFns = [];
   function registerCleanup(fn) {
     cleanupFns.push(fn);
   }
-
   const sections = sectionSelectors.map((sel) => document.querySelector(sel)).filter(Boolean);
   console.log('[SNAP]', key, '— sections trouvées:', sections.length, '/', sectionSelectors.length, sectionSelectors);
   if (!sections.length) {
     console.log('[SNAP]', key, '— ABANDON aucune section trouvée');
     return;
   }
-
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       sections.forEach((el) => el.classList.add('is-ready'));
     });
   });
-
   let currentIndex = -1;
   let locked = false;
   let wheelAccumulator = 0;
   let hasReachedBottom = false;
-
   function current() {
     return currentIndex >= 0 ? sections[currentIndex] : null;
   }
-
   const nestedLenisInstances = new Map();
-
   function ensureNestedLenis(section) {
     if (nestedLenisInstances.has(section)) return nestedLenisInstances.get(section);
     if (typeof Lenis === 'undefined') return null;
     if (section.scrollHeight <= section.clientHeight + 10) return null;
-
     const isMobile = window.innerWidth < 992;
-
     const instance = new Lenis({
       wrapper: section,
       content: section.firstElementChild || section,
@@ -78,13 +66,11 @@ function initFixedSectionSnap(options) {
     });
     return instance;
   }
-
   function proxyFor(section) {
     if (typeof getScrollProxy === 'function') {
       const proxy = getScrollProxy(section);
       if (proxy) return proxy;
     }
-
     const nested = ensureNestedLenis(section);
     if (nested) {
       return {
@@ -95,7 +81,6 @@ function initFixedSectionSnap(options) {
         nativeScroll: true,
       };
     }
-
     return {
       isAtTop: () => section.scrollTop <= 10,
       isAtBottom: () => section.scrollTop + section.clientHeight >= section.scrollHeight - 50,
@@ -107,25 +92,21 @@ function initFixedSectionSnap(options) {
       },
     };
   }
-
   function isAtTopOfCurrent() {
     const section = current();
     if (!section) return false;
     return proxyFor(section).isAtTop();
   }
-
   function isAtBottomOfCurrent() {
     const section = current();
     if (!section) return false;
     return proxyFor(section).isAtBottom();
   }
-
   function scrollCurrent(delta) {
     const section = current();
     if (!section) return;
     proxyFor(section).scrollBy(delta);
   }
-
   function lock(cb) {
     if (locked) return;
     locked = true;
@@ -137,7 +118,6 @@ function initFixedSectionSnap(options) {
       wheelAccumulator = 0;
     }, lockDuration);
   }
-
   function showNext() {
     const next = currentIndex + 1;
     if (next >= sections.length) {
@@ -152,16 +132,13 @@ function initFixedSectionSnap(options) {
     currentIndex = next;
     hasReachedBottom = false;
     wheelAccumulator = 0;
-
     if (!wasInFixedMode) {
       document.documentElement.classList.add('snap-active');
       if (window.lenis) window.lenis.stop();
     }
-
     if (typeof onEnter === 'function') onEnter(currentIndex, section);
     return true;
   }
-
   function hideCurrent() {
     const section = current();
     if (!section) return false;
@@ -182,11 +159,9 @@ function initFixedSectionSnap(options) {
     }
     return true;
   }
-
   function getCurrentScroll() {
     return window.lenis ? window.lenis.scroll : window.scrollY;
   }
-
   function isEntryReached() {
     if (entry.mode === 'elementBottom' && entry.element) {
       const el = typeof entry.element === 'string' ? document.querySelector(entry.element) : entry.element;
@@ -202,7 +177,6 @@ function initFixedSectionSnap(options) {
     const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
     return getCurrentScroll() >= maxScroll - 20;
   }
-
   let lenisScrollHandler = null;
   let nativeScrollHandler = null;
   function bindEntryDetection() {
@@ -241,23 +215,18 @@ function initFixedSectionSnap(options) {
     }
   }
   bindEntryDetection();
-
   const TOUCH_THRESHOLD_MULTIPLIER = 3;
-
   function processDelta(e, deltaY, preventFn, isTouch, softPreventFn) {
     if (document.body.classList.contains('lightbox-open')) return;
     if (typeof hasOpenModal === 'function' && hasOpenModal()) return;
-
     const inFixedMode = currentIndex >= 0;
     const thresholdDelta = isTouch ? deltaY * TOUCH_THRESHOLD_MULTIPLIER : deltaY;
-
     if (!inFixedMode && typeof isEligible === 'function') {
       const point = e.touches && e.touches[0] ? e.touches[0] : e.changedTouches && e.changedTouches[0] ? e.changedTouches[0] : e;
       const normalized = { clientX: point.clientX, clientY: point.clientY, deltaY };
       const eligible = isEligible(normalized);
       if (!eligible) return;
     }
-
     if (inFixedMode) {
       if (locked) {
         preventFn();
@@ -267,11 +236,9 @@ function initFixedSectionSnap(options) {
       const proxy = proxyFor(section);
       const atBottom = isAtBottomOfCurrent();
       const atTop = isAtTopOfCurrent();
-
       if (isTouch && Math.abs(deltaY) > 3) {
         console.log('[SNAP]', key, '— touchmove en mode fixe | index:', currentIndex, section.className, '| deltaY:', deltaY, '| atTop:', atTop, '| atBottom:', atBottom, '| nativeScroll:', proxy.nativeScroll, '| accumulator:', wheelAccumulator);
       }
-
       if (deltaY > 0) {
         if (atBottom) {
           preventFn();
@@ -309,12 +276,10 @@ function initFixedSectionSnap(options) {
       }
       return;
     }
-
     if (locked) {
       preventFn();
       return;
     }
-
     if (deltaY > 0 && hasReachedBottom) {
       preventFn();
       wheelAccumulator += thresholdDelta;
@@ -325,10 +290,8 @@ function initFixedSectionSnap(options) {
       }
       return;
     }
-
     wheelAccumulator = 0;
   }
-
   const wheelHandler = (e) => {
     processDelta(e, e.deltaY, () => {
       e.preventDefault();
@@ -338,12 +301,10 @@ function initFixedSectionSnap(options) {
   };
   window.addEventListener('wheel', wheelHandler, { passive: false, capture: true });
   registerCleanup(() => window.removeEventListener('wheel', wheelHandler, { capture: true }));
-
   if (enableTouch) {
     let touchStartY = 0;
     let lastTouchY = 0;
     let isTouchTracking = false;
-
     const touchStartHandler = (e) => {
       if (e.touches.length !== 1) return;
       isTouchTracking = true;
@@ -372,12 +333,10 @@ function initFixedSectionSnap(options) {
     const touchEndHandler = () => {
       isTouchTracking = false;
     };
-
     window.addEventListener('touchstart', touchStartHandler, { passive: true, capture: true });
     window.addEventListener('touchmove', touchMoveHandler, { passive: false, capture: true });
     window.addEventListener('touchend', touchEndHandler, { passive: true, capture: true });
     window.addEventListener('touchcancel', touchEndHandler, { passive: true, capture: true });
-
     registerCleanup(() => {
       window.removeEventListener('touchstart', touchStartHandler, { capture: true });
       window.removeEventListener('touchmove', touchMoveHandler, { capture: true });
@@ -385,7 +344,6 @@ function initFixedSectionSnap(options) {
       window.removeEventListener('touchcancel', touchEndHandler, { capture: true });
     });
   }
-
   window[`__fixedSectionSnapExitToTop_${key}`] = function () {
     function step() {
       if (currentIndex >= 0) {
@@ -401,6 +359,41 @@ function initFixedSectionSnap(options) {
   };
   registerCleanup(() => {
     window[`__fixedSectionSnapExitToTop_${key}`] = null;
+  });
+
+  // ─── Sauvegarde/restauration pour le retour arrière navigateur ─────────
+  // getIndex() : lit l'index actif actuel (-1 = aucune section, avant la
+  // séquence). Appelé par barba.js dans leave(), AVANT que le cleanup ne
+  // détruise cet état, pour le sauvegarder en sessionStorage.
+  window[`__fixedSectionSnapGetIndex_${key}`] = () => currentIndex;
+
+  // restore(targetIndex) : saute DIRECTEMENT à l'index donné, sans passer
+  // par l'animation normale de progression section par section — toutes
+  // les sections jusqu'à targetIndex inclus reçoivent .is-visible (comme
+  // le ferait une progression naturelle via showNext() répétés, où les
+  // sections déjà passées gardent .is-visible et restent simplement
+  // masquées visuellement sous celle du dessus grâce au z-index croissant).
+  // Pensé pour être appelé juste après une transition de page, pendant que
+  // l'écran est encore masqué par le cache de transition — donc pas besoin
+  // d'animer, juste de poser l'état final directement.
+  window[`__fixedSectionSnapRestore_${key}`] = function (targetIndex) {
+    if (targetIndex == null || targetIndex < 0) return;
+    const clamped = Math.min(targetIndex, sections.length - 1);
+    for (let i = 0; i <= clamped; i++) {
+      sections[i].classList.add('is-visible');
+    }
+    const section = sections[clamped];
+    proxyFor(section).reset();
+    currentIndex = clamped;
+    hasReachedBottom = false;
+    wheelAccumulator = 0;
+    document.documentElement.classList.add('snap-active');
+    if (window.lenis) window.lenis.stop();
+    if (typeof onEnter === 'function') onEnter(currentIndex, section);
+  };
+  registerCleanup(() => {
+    window[`__fixedSectionSnapGetIndex_${key}`] = null;
+    window[`__fixedSectionSnapRestore_${key}`] = null;
   });
 
   window[cleanupKey] = function () {

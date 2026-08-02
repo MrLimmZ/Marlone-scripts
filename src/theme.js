@@ -24,6 +24,20 @@ function applyBannerTheme(isLight) {
         darkImg.style.setProperty("display", "block", "important");
       }
     });
+
+  // FIX : dès qu'une image (light ou dark) vient de passer à display:block,
+  // on relance initImageReveal(). Grâce au fix appliqué dans
+  // image-reveal-fixed.js (le flag revealInit n'est plus posé tant que
+  // l'image est cachée), cet appel va effectivement wrapper toute image
+  // qui vient de devenir visible pour la première fois et qui ne l'était
+  // pas au chargement initial — lui donnant enfin le même wrapper/bg/
+  // opacity/transition que son homologue déjà traité, et donc la même
+  // taille et le même comportement au hover.
+  // Les images déjà wrappées ne sont pas retouchées (revealInit === "true"
+  // les fait sortir immédiatement de la boucle).
+  if (typeof window.initImageReveal === "function") {
+    window.initImageReveal();
+  }
 }
 
 function getSystemTheme() {
@@ -33,10 +47,6 @@ function getSystemTheme() {
   return prefersLight ? "On" : "Off";
 }
 
-// Détermine le thème à appliquer selon la même règle que le bootstrap du <head> :
-// - si l'utilisateur a fait un choix manuel cette session (switch cliqué), on le respecte
-// - sinon on suit toujours le système en direct, même si une ancienne valeur
-//   automatique traîne dans sessionStorage (elle peut être obsolète)
 function resolveTheme() {
   const manual = sessionStorage.getItem(THEME_MANUAL_KEY) === "1";
   const stored = sessionStorage.getItem(THEME_KEY);
@@ -67,7 +77,7 @@ function initThemeSwitch(scope = document) {
       option.dataset.themeInit = "true";
       option.addEventListener("click", () => {
         const value = option.getAttribute("data-switch-value");
-        sessionStorage.setItem(THEME_MANUAL_KEY, "1"); // choix explicite : ne suit plus le système
+        sessionStorage.setItem(THEME_MANUAL_KEY, "1");
         applyTheme(value);
         options.forEach((opt) => {
           opt.classList.toggle(
